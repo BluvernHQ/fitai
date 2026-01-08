@@ -2,32 +2,37 @@ import streamlit as st
 import os
 import sys
 
-# --- FIX 1: SAFER SQLITE SWAP (Cloud Compatibility) ---
+# --- FIX 1: BULLETPROOF SQLITE SWAP ---
+# We wrap this in a broad try/except so it NEVER crashes the app.
+# If it fails, it just uses the default system SQLite.
 try:
     __import__('pysqlite3')
     import sys
-    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-except ImportError:
-    pass
+    # Only try to swap if it actually exists
+    if 'pysqlite3' in sys.modules:
+        sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except Exception:
+    pass 
 
-# --- FIX 2: INJECT SECRETS INTO ENV ---
+# --- FIX 2: INJECT API KEY ---
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 # --- IMPORTS ---
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-# --- LOAD MODULES (Wrap in try/except) ---
+# --- LOAD MODULES SAFELY ---
+# If src.database is missing, we just skip it for the demo
 try:
     from src.rag.retriever import get_exercises_by_profile
     from src.rag.generator import generate_workout_plan
-    # We try to import the DB model, but if it fails, we just ignore it
     try:
         from src.database import AssessmentLog
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        DB_AVAILABLE = True
     except ImportError:
-        AssessmentLog = None
+        DB_AVAILABLE = False
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Missing Module. {e}")
     st.stop()
@@ -36,21 +41,10 @@ except ImportError as e:
 st.set_page_config(page_title="FMS Smart Coach", page_icon="🏋️", layout="wide")
 load_dotenv() 
 
-# --- DATABASE SETUP (SAFE MODE) ---
-# If no URL is provided, we simply disable the DB features
-DB_URL = os.getenv("DATABASE_URL")
+# --- DISABLE DATABASE FOR DEMO ---
+# We force these to None so the app doesn't try to connect
 engine = None
 SessionLocal = None
-
-if DB_URL and DB_URL.startswith("postgres"):
-    try:
-        if DB_URL.startswith("postgres://"):
-            DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(DB_URL)
-        SessionLocal = sessionmaker(bind=engine)
-    except Exception as e:
-        print(f"Database connection failed: {e}")
-        SessionLocal = None
 
 # --- HEADER ---
 st.title("🏋️ AI Strength Coach: FMS Analyzer")
@@ -75,7 +69,7 @@ with st.sidebar:
 
 # --- MAIN LOGIC ---
 if submit_btn:
-    # 1. Prepare Data
+    # 1. Prepare Data (Pain is forced to False)
     scores = {
         "deep_squat": deep_squat,
         "hurdle_step": hurdle_step,
@@ -96,6 +90,7 @@ if submit_btn:
             analysis = retrieval_result.get('analysis', {'reason': 'General Training'})
             ex_data = retrieval_result.get('data', [])
             
+            # Fallback if no exercises found
             if not ex_data:
                 ex_data = [{"exercise_name": "General Mobility Flow", "clinical_type": "Mobility", "description": "Full body mobility routine."}]
 
@@ -129,27 +124,8 @@ if submit_btn:
                         </div>
                         """, unsafe_allow_html=True)
 
-            # --- SAVE TO DB (SKIPPED IF NO DB) ---
-            if SessionLocal and AssessmentLog:
-                try:
-                    session = SessionLocal()
-                    total_score = sum([v for k,v in scores.items() if isinstance(v, int)])
-                    
-                    new_log = AssessmentLog(
-                        deep_squat=deep_squat, hurdle_step=hurdle_step, inline_lunge=inline_lunge,
-                        shoulder_mobility=shoulder_mobility, aslr=aslr, trunk_stability=trunk_stability,
-                        rotary_stability=rotary_stability, final_score=total_score, 
-                        predicted_level=result_data.get('session_title', 'Generated Plan')
-                    )
-                    session.add(new_log)
-                    session.commit()
-                    session.close()
-                    st.toast("✅ Results saved", icon="💾")
-                except Exception:
-                    pass 
-            else:
-                # Just show a toast for the demo so it feels complete
-                st.toast("✅ Workout Generated Successfully!", icon="🚀")
+            # --- TOAST SUCCESS (No DB Save) ---
+            st.toast("✅ Workout Generated Successfully!", icon="🚀")
 
         except Exception as e:
             st.error(f"❌ System Error: {str(e)}")
