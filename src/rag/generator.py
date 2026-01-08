@@ -1,10 +1,9 @@
 import os
 from typing import List, Dict, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel, Field
+from langchain_core.pydantic_v1 import BaseModel, Field
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,24 +23,30 @@ class WorkoutSession(BaseModel):
     coach_summary: str = Field(description="A 1-sentence explanation of WHY this session was chosen.")
     exercises: List[ExerciseCard] = Field(description="The list of formatted exercise cards")
 
-# --- 2. SETUP THE MODEL ---
-llm = ChatGroq(
-    model_name="llama-3.3-70b-versatile", 
-    temperature=0.3,
-    api_key=os.environ.get("GROQ_API_KEY")
-)
-
-parser = JsonOutputParser(pydantic_object=WorkoutSession)
-
+# --- 2. MAIN GENERATOR FUNCTION ---
 def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict[str, Any]]):
     """
     Generates the UI JSON.
-    
-    Args:
-        analysis_context: The dict returned by fms_analyzer (contains 'reason', 'status', 'target_level').
-        exercises: The list of exercise objects selected by the retriever.
     """
     
+    # --- MOVED INSIDE: Initialize LLM only when called ---
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return {
+            "session_title": "Configuration Error",
+            "difficulty_color": "Red",
+            "coach_summary": "System Error: GROQ_API_KEY is missing from Cloud Secrets.",
+            "exercises": []
+        }
+
+    llm = ChatGroq(
+        model_name="llama-3.3-70b-versatile", 
+        temperature=0.3,
+        api_key=api_key
+    )
+    
+    parser = JsonOutputParser(pydantic_object=WorkoutSession)
+
     # --- 3. THE "COACH" PROMPT ---
     system_prompt = """
     You are an expert Strength & Conditioning Coach.
@@ -88,4 +93,10 @@ def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict
         })
         return response
     except Exception as e:
-        return {"error": str(e)}
+        # Return a safe error structure so the UI doesn't crash
+        return {
+            "session_title": "AI Error",
+            "difficulty_color": "Red",
+            "coach_summary": f"Generation failed: {str(e)}",
+            "exercises": []
+        }
