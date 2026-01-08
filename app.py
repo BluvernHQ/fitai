@@ -2,37 +2,31 @@ import streamlit as st
 import os
 import sys
 
-# --- FIX 1: BULLETPROOF SQLITE SWAP ---
-# We wrap this in a broad try/except so it NEVER crashes the app.
-# If it fails, it just uses the default system SQLite.
+# --- FIX: SQLITE COMPATIBILITY ---
 try:
     __import__('pysqlite3')
     import sys
-    # Only try to swap if it actually exists
     if 'pysqlite3' in sys.modules:
         sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 except Exception:
-    pass 
+    pass
 
-# --- FIX 2: INJECT API KEY ---
+# --- INJECT SECRETS ---
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+if "DATABASE_URL" in st.secrets:
+    os.environ["DATABASE_URL"] = st.secrets["DATABASE_URL"]
 
 # --- IMPORTS ---
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import sessionmaker
 
-# --- LOAD MODULES SAFELY ---
-# If src.database is missing, we just skip it for the demo
+# --- LOAD MODULES ---
 try:
     from src.rag.retriever import get_exercises_by_profile
     from src.rag.generator import generate_workout_plan
-    try:
-        from src.database import AssessmentLog
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        DB_AVAILABLE = True
-    except ImportError:
-        DB_AVAILABLE = False
+    from src.database import AssessmentLog, Base
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Missing Module. {e}")
     st.stop()
@@ -41,14 +35,38 @@ except ImportError as e:
 st.set_page_config(page_title="FMS Smart Coach", page_icon="🏋️", layout="wide")
 load_dotenv() 
 
-# --- DISABLE DATABASE FOR DEMO ---
-# We force these to None so the app doesn't try to connect
+# --- DATABASE CONNECTION LOGIC ---
+DB_URL = os.getenv("DATABASE_URL")
 engine = None
 SessionLocal = None
+db_status = "🔴 Not Connected"
+
+if DB_URL:
+    try:
+        # Compatibility Fix: Neon gives 'postgres://', SQLAlchemy needs 'postgresql://'
+        if DB_URL.startswith("postgres://"):
+            DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+        
+        engine = create_engine(DB_URL)
+        SessionLocal = sessionmaker(bind=engine)
+        
+        # AUTO-CREATE TABLES (Magic Step)
+        # This checks if the table exists; if not, it builds it automatically.
+        try:
+            inspector = inspect(engine)
+            if not inspector.has_table("assessment_logs"):
+                Base.metadata.create_all(engine)
+            db_status = "🟢 Online (Neon DB)"
+        except Exception as e:
+            db_status = f"🟡 Connected but Table Error: {e}"
+
+    except Exception as e:
+        db_status = f"🔴 Connection Failed: {str(e)}"
 
 # --- HEADER ---
 st.title("🏋️ AI Strength Coach: FMS Analyzer")
 st.markdown("### From Screening to Programming in Seconds")
+st.caption(f"Database Status: {db_status}") 
 st.markdown("---")
 
 # --- SIDEBAR: INPUT FORM ---
@@ -69,7 +87,7 @@ with st.sidebar:
 
 # --- MAIN LOGIC ---
 if submit_btn:
-    # 1. Prepare Data (Pain is forced to False)
+    # 1. Prepare Data
     scores = {
         "deep_squat": deep_squat,
         "hurdle_step": hurdle_step,
@@ -90,7 +108,6 @@ if submit_btn:
             analysis = retrieval_result.get('analysis', {'reason': 'General Training'})
             ex_data = retrieval_result.get('data', [])
             
-            # Fallback if no exercises found
             if not ex_data:
                 ex_data = [{"exercise_name": "General Mobility Flow", "clinical_type": "Mobility", "description": "Full body mobility routine."}]
 
@@ -124,8 +141,24 @@ if submit_btn:
                         </div>
                         """, unsafe_allow_html=True)
 
-            # --- TOAST SUCCESS (No DB Save) ---
-            st.toast("✅ Workout Generated Successfully!", icon="🚀")
+            # --- SAVE TO NEON DB ---
+            if SessionLocal:
+                try:
+                    session = SessionLocal()
+                    total_score = sum([v for k,v in scores.items() if isinstance(v, int)])
+                    
+                    new_log = AssessmentLog(
+                        deep_squat=deep_squat, hurdle_step=hurdle_step, inline_lunge=inline_lunge,
+                        shoulder_mobility=shoulder_mobility, aslr=aslr, trunk_stability=trunk_stability,
+                        rotary_stability=rotary_stability, final_score=total_score, 
+                        predicted_level=result_data.get('session_title', 'Generated Plan')
+                    )
+                    session.add(new_log)
+                    session.commit()
+                    session.close()
+                    st.toast("✅ Results saved to Neon Database!", icon="💾")
+                except Exception as e:
+                    st.error(f"Database Save Failed: {str(e)}")
 
         except Exception as e:
             st.error(f"❌ System Error: {str(e)}")
