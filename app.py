@@ -2,16 +2,18 @@ import streamlit as st
 import os
 import sys
 
-# --- FIX 1: SQLITE FOR CHROMA (Cloud Compatibility) ---
-# This prevents the "unsupported sqlite version" error that often happens next.
+# --- FIX: SAFER SQLITE SWAP ---
+# We use a try-except block to prevent the app from crashing 
+# if the cloud environment behaves unexpectedly.
 try:
-    __import__('pysqlite3')
-    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-except ImportError:
+    import pysqlite3
+    sys.modules['sqlite3'] = pysqlite3
+except (ImportError, KeyError):
+    # If this fails, we just continue. 
+    # The app will try to run with the default SQLite.
     pass
 
-# --- FIX 2: LOAD SECRETS INTO ENV (CRITICAL STEP) ---
-# We must do this BEFORE importing the RAG modules, or they will crash.
+# --- INJECT SECRETS (Must be after the fix, but before logic) ---
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
