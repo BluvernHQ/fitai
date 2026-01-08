@@ -22,3 +22,6 @@ uvicorn
 pydantic
 python-dotenv
 httpx
+
+langchain-groq
+langchain-google-genai
