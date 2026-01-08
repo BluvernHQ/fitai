@@ -1,18 +1,34 @@
 import streamlit as st
 import os
+import sys
+
+# --- FIX 1: SQLITE FOR CHROMA (Cloud Compatibility) ---
+# This prevents the "unsupported sqlite version" error that often happens next.
+try:
+    __import__('pysqlite3')
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass
+
+# --- FIX 2: LOAD SECRETS INTO ENV (CRITICAL STEP) ---
+# We must do this BEFORE importing the RAG modules, or they will crash.
+if "GROQ_API_KEY" in st.secrets:
+    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+
+if "DATABASE_URL" in st.secrets:
+    os.environ["DATABASE_URL"] = st.secrets["DATABASE_URL"]
+
+# --- NOW IT IS SAFE TO IMPORT YOUR MODULES ---
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-# --- IMPORT YOUR BRAIN DIRECTLY (No API URL needed) ---
-# We bypass main.py and call the logic functions directly
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
-from src.database import AssessmentLog  # Import the DB model
+from src.database import AssessmentLog
 
 # 1. CONFIG & SETUP
 st.set_page_config(page_title="FMS Smart Coach", page_icon="🏋️", layout="wide")
-load_dotenv()
+load_dotenv() # Fallback for local testing
 
 # Setup Database Connection (Neon)
 DB_URL = os.getenv("DATABASE_URL")
@@ -106,7 +122,7 @@ if submit_btn:
             else:
                 cols = st.columns(3)
                 for idx, exercise in enumerate(result_data['exercises']):
-                    with cols[idx % 3]: # Wrap around columns if > 3 exercises
+                    with cols[idx % 3]: 
                         st.markdown(f"""
                         <div style="padding: 15px; border: 1px solid #444; border-radius: 10px; background-color: #262730; margin-bottom: 10px;">
                             <h4 style="color: #FF4B4B; margin:0;">{exercise['name']}</h4>
@@ -122,7 +138,6 @@ if submit_btn:
             if SessionLocal:
                 try:
                     session = SessionLocal()
-                    # Calculate simple total for DB record
                     total_score = sum([v for k,v in scores.items() if isinstance(v, int)])
                     
                     new_log = AssessmentLog(
