@@ -43,15 +43,12 @@ db_status = "🔴 Not Connected"
 
 if DB_URL:
     try:
-        # Compatibility Fix: Neon gives 'postgres://', SQLAlchemy needs 'postgresql://'
         if DB_URL.startswith("postgres://"):
             DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
         
         engine = create_engine(DB_URL)
         SessionLocal = sessionmaker(bind=engine)
         
-        # AUTO-CREATE TABLES (Magic Step)
-        # This checks if the table exists; if not, it builds it automatically.
         try:
             inspector = inspect(engine)
             if not inspector.has_table("assessment_logs"):
@@ -87,7 +84,7 @@ with st.sidebar:
 
 # --- MAIN LOGIC ---
 if submit_btn:
-    # 1. Prepare Data
+    # 1. Prepare Data (Automatically injecting pain_present: False)
     scores = {
         "deep_squat": deep_squat,
         "hurdle_step": hurdle_step,
@@ -96,7 +93,7 @@ if submit_btn:
         "active_straight_leg_raise": aslr,
         "trunk_stability_pushup": trunk_stability,
         "rotary_stability": rotary_stability,
-        "pain_present": False 
+        "pain_present": False  # HIDDEN FROM UI
     }
 
     with st.spinner("🤖 AI Coach is analyzing the profile..."):
