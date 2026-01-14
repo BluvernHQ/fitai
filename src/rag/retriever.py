@@ -50,10 +50,20 @@ def get_exercises_by_profile(fms_profile_scores):
         ]
 
     # --- 4. SELECT (Shuffle) ---
-    selected = random.sample(candidate_exercises, min(len(candidate_exercises), 3))
+    # Sort keys to ensure dictionary order doesn't break the seed
+    seed_string = "-".join([str(v) for k, v in sorted(fms_profile_scores.items())])
+    
+    # Sort candidates by name first so the list order is stable
+    candidate_exercises.sort(key=lambda x: x.get('exercise_name', ''))
+
+    # Use a specific random instance seeded with the user's scores
+    rng = random.Random(seed_string)
+    
+    # Now this will always pick the SAME 3 exercises for the SAME scores
+    selected = rng.sample(candidate_exercises, min(len(candidate_exercises), 3))
     
     return {
         "status": "SUCCESS",
-        "analysis": analysis, # Pass the "Coach's Reasoning" back to the UI
+        "analysis": analysis,
         "data": selected
     }
