@@ -41,7 +41,7 @@ def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict
 
     llm = ChatGroq(
         model_name="llama-3.3-70b-versatile", 
-        temperature=0.3,
+        temperature=0,
         api_key=api_key
     )
     
