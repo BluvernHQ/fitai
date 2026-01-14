@@ -39,10 +39,15 @@ def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict
             "exercises": []
         }
 
+    # 1. FIX: FORCE DETERMINISTIC ORDER
+    # Sort exercises alphabetically by name to ensure the prompt is IDENTICAL every time.
+    exercises = sorted(exercises, key=lambda x: x.get('exercise_name', '')) 
+
     llm = ChatGroq(
         model_name="llama-3.3-70b-versatile", 
-        temperature=0,
-        api_key=api_key
+        temperature=0,  # Keep this at 0
+        api_key=api_key,
+        model_kwargs={"seed": 42} # Locks the randomness
     )
     
     parser = JsonOutputParser(pydantic_object=WorkoutSession)
