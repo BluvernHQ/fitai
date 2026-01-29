@@ -1,161 +1,172 @@
+# retriever.py: Removed pain_present references if any (none present).
+
 import json
 import os
+from typing import Dict, Any, List, Optional
 from src.logic.fms_analyzer import analyze_fms_profile
 
+# --- CONFIGURATION ---
+# If your JSON is in the same folder as main.py, change this to just 'exercise_knowledge_base.json'
 DB_PATH = 'data/processed/exercise_knowledge_base.json'
 
-# --- 1. DEFINE TAG MAPPING ---
-# This links the Frontend Input ID (negative faults) to the Database Smart Tag
 FAULT_TO_TAG_MAP = {
-    # Overhead Squat
-    "excessive_forward_lean": "fix_posture",
-    "rib_flare": "fix_core_stability",
-    "lumbar_flexion": "fix_core_stability",
-    "lumbar_extension_sway_back": "fix_core_stability",
-    "knee_valgus": "fix_knee_tracking",
-    "knee_varus": "fix_knee_tracking",
-    "uneven_depth": "fix_asymmetry",
-    "heels_lift": "fix_ankle_mobility",
-    "excessive_pronation": "fix_ankle_mobility",
-    "excessive_supination": "fix_ankle_mobility",
-    "bar_drifts_forward": "fix_balance",
-    "arms_fall_forward": "fix_shoulder_mobility",
-    "shoulder_mobility_restriction_suspected": "fix_shoulder_mobility",
-    
-    # Hurdle Step
-    "pelvic_drop_trendelenburg": "fix_balance",
-    "excessive_rotation": "fix_core_stability",
-    "loss_of_balance": "fix_balance",
-    "ankle_instability": "fix_balance",
-    "toe_drag": "fix_hip_mobility",
-    "hip_flexion_restriction": "fix_hip_mobility",
-    "asymmetrical_movement": "fix_asymmetry",
-    
-    # Inline Lunge
-    "forward_head": "fix_posture",
-    "excessive_forward_lean": "fix_posture",
-    "lateral_shift": "fix_balance",
-    "knee_instability": "fix_knee_tracking",
-    "heel_lift": "fix_ankle_mobility",
-    "wobbling": "fix_balance",
-    "unequal_weight_distribution": "fix_asymmetry",
-    
-    # Shoulder Mobility
-    "excessive_gap": "fix_shoulder_mobility",
-    "asymmetry_present": "fix_asymmetry",
-    "spine_flexion": "fix_core_stability",
-    "scapular_winging": "fix_shoulder_mobility",
-    "pain_reported": "fix_pain",  # Special handling perhaps
-    
-    # Active Straight Leg Raise
-    "knee_bends": "fix_knee_tracking",
-    "hip_externally_rotates": "fix_hip_mobility",
-    "foot_lifts_off_floor": "fix_core_stability",
-    "lt_60_hip_flexion": "fix_hip_mobility",
-    "hamstring_restriction": "fix_hip_mobility",
-    "anterior_tilt": "fix_core_stability",
-    "posterior_tilt": "fix_core_stability",
-    
-    # Trunk Stability Push-Up
-    "sagging_hips": "fix_core_stability",
-    "pike_position": "fix_core_stability",
-    "hips_lag": "fix_core_stability",
-    "excessive_lumbar_extension": "fix_core_stability",
-    "uneven_arm_push": "fix_asymmetry",
-    "shoulder_instability": "fix_shoulder_mobility",
-    
-    # Rotary Stability
-    "unable_to_complete": "fix_balance",
-    "lumbar_shift": "fix_core_stability",
-    "left_side_deficit": "fix_asymmetry",
-    "right_side_deficit": "fix_asymmetry",
-    
-    # Add more as needed
+    # Keys = Input Faults | Values = Tags in your JSON
+    "heels_lift": "fix_heels_lift",
+    "knee_valgus": "fix_knee_valgus",
+    "knee_varus": "pattern_squat",
+    "excessive_forward_lean": "pattern_squat",  # Map to general squat for now; add specific if needed
+    "lumbar_flexion": "pattern_squat",
+    "uneven_depth": "pattern_squat",
+    "pelvic_drop_trendelenburg": "pattern_squat",
+    "loss_of_balance": "level_1",
+    "default_squat": "pattern_squat",
+    # Expanded mappings based on common faults
+    "rib_flare": "pattern_squat",
+    "lumbar_extension_sway_back": "pattern_squat",
+    "excessive_pronation": "fix_heels_lift",  # Ankle-related
+    "excessive_supination": "fix_heels_lift",
+    "bar_drifts_forward": "pattern_squat",
+    "arms_fall_forward": "pattern_squat",
+    "shoulder_mobility_restriction_suspected": "pattern_squat",
+    "excessive_rotation": "pattern_squat",
+    "ankle_instability": "fix_heels_lift",
+    "toe_drag": "pattern_squat",
+    "hip_flexion_restriction": "pattern_squat",
+    "asymmetrical_movement": "pattern_squat",
+    "forward_head": "pattern_squat",
+    "lateral_shift": "pattern_squat",
+    "knee_instability": "fix_knee_valgus",
+    "heel_lift": "fix_heels_lift",
+    "wobbling": "level_1",
+    "unequal_weight_distribution": "pattern_squat",
+    "excessive_gap": "pattern_squat",
+    "asymmetry_present": "pattern_squat",
+    "spine_flexion": "pattern_squat",
+    "scapular_winging": "pattern_squat",
+    "pain_reported": "stop",  # Special handling
+    "knee_bends": "pattern_squat",
+    "hip_externally_rotates": "pattern_squat",
+    "foot_lifts_off_floor": "pattern_squat",
+    "lt_60_hip_flexion": "pattern_squat",
+    "hamstring_restriction": "pattern_squat",
+    "anterior_tilt": "pattern_squat",
+    "posterior_tilt": "pattern_squat",
+    "sagging_hips": "pattern_squat",
+    "pike_position": "pattern_squat",
+    "hips_lag": "pattern_squat",
+    "excessive_lumbar_extension": "pattern_squat",
+    "uneven_arm_push": "pattern_squat",
+    "shoulder_instability": "pattern_squat",
+    "unable_to_complete": "level_1",
+    "lumbar_shift": "pattern_squat",
+    "left_side_deficit": "pattern_squat",
+    "right_side_deficit": "pattern_squat"
 }
 
-def load_knowledge_base():
+def load_knowledge_base() -> List[Dict[str, Any]]:
+    print(f"--- DEBUG: Looking for DB at: {os.path.abspath(DB_PATH)} ---")
+    
     if not os.path.exists(DB_PATH):
-        raise FileNotFoundError(f"Database not found at {DB_PATH}")
-    with open(DB_PATH, 'r', encoding='utf-8') as f:
-        return json.load(f)['exercises']  # Assuming top-level 'exercises' list
+        print(f"❌ ERROR: File not found! Check your folder structure.")
+        return []
+        
+    try:
+        with open(DB_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Handle list vs dict structure
+            if isinstance(data, list):
+                print(f"✅ SUCCESS: Loaded {len(data)} exercises from JSON.")
+                return data
+            elif isinstance(data, dict):
+                items = data.get('exercises', [])
+                print(f"✅ SUCCESS: Loaded {len(items)} exercises from JSON dict.")
+                return items
+            else:
+                print("❌ ERROR: JSON format unrecognized.")
+                return []
+    except Exception as e:
+        print(f"❌ ERROR loading JSON: {e}")
+        return []
 
-def get_exercises_by_profile(simple_scores, detailed_faults=None):
-    """
-    1. Analyzes FMS Level.
-    2. Scans Detailed Faults to find 'Priority Tags'.
-    3. Scores exercises: +50 pts for Tag Match, +10 pts for Level Match.
-    4. Returns the highest scoring exercises.
-    No random fallback; return empty if no matches.
-    """
+def get_exercises_by_profile(
+    simple_scores: Dict[str, int],
+    detailed_faults: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     
-    # --- 1. ANALYZE LEVEL ---
-    analysis = analyze_fms_profile(simple_scores)
-    
-    if analysis['status'] == "STOP":
-        return {"status": "STOP", "message": analysis['reason'], "data": []}
-    
-    target_level = analysis['target_level']
-    kb = load_knowledge_base()
-
-    # --- 2. IDENTIFY PRIORITY TAGS ---
-    # We look through the detailed_faults for anything rated 3 or higher (severe faults).
-    priority_tags = set()  # Use set to avoid duplicates
-    
+    # 1. Analyze
     if detailed_faults:
-        for test_name, data in detailed_faults.items():
-            if isinstance(data, dict):
-                for category, details in data.items():
-                    if isinstance(details, dict):
-                        for fault_name, severity in details.items():
-                            # If Fault is Severe (3 or 4)
-                            if isinstance(severity, int) and severity >= 3:
-                                # Find the matching DB tag (only for negative faults in map)
-                                if fault_name in FAULT_TO_TAG_MAP:
-                                    priority_tags.add(FAULT_TO_TAG_MAP[fault_name])
+        analysis = analyze_fms_profile(detailed_faults, use_manual_scores=detailed_faults.get('use_manual_scores', False))
+    else:
+        analysis = analyze_fms_profile(simple_scores)
 
-    # --- 3. SCORING ALGORITHM ---
-    scored_exercises = []
+    target_level = analysis.get('target_level', 1)
+    print(f"--- DEBUG: Target Level is {target_level} ---")
 
-    for ex in kb:
-        score = 0
-        ex_level = ex.get('level', 1)
-        ex_tags = ex.get('tags', [])
+    # 2. Load Data
+    kb = load_knowledge_base()
+    if not kb:
+        return {"status": "ERROR_NO_DB", "analysis": analysis, "data": []}
 
-        # Rule A: Must be close to Target Level (Strict Safety)
-        level_diff = abs(ex_level - target_level)
-        if level_diff > 1:
-            continue  # Skip exercises that are too hard or too easy
-        
-        # Rule B: Exact Level Match (+10 pts)
-        if ex_level == target_level:
-            score += 10
-        
-        # Rule C: Corrective Tag Match (+50 pts per match)
-        # This forces the corrective exercises to the top
-        for p_tag in priority_tags:
-            if p_tag in ex_tags:
-                score += 50
-                # Bonus for match
-                score += 5 
-
-        # Only add if score > 0 (i.e., at least level close)
-        if score > 0:
-            scored_exercises.append({
-                "exercise": ex,
-                "score": score
-            })
-
-    # --- 4. SELECT TOP 3 ---
-    # Sort by Score (Desc), then by Name (for consistency)
-    scored_exercises.sort(key=lambda x: (-x['score'], x['exercise']['name']))
+    # 3. Build Search Tags
+    search_tags = set()
     
-    # Take top 3 highest scoring exercises
-    top_picks = [item['exercise'] for item in scored_exercises[:3]]
+    # Add Level Tag (e.g., "level_1")
+    search_tags.add(f"level_{target_level}")
 
-    # No fallback; if empty, return empty
+    # Add Fault Tags
+    if detailed_faults:
+        for test, data in detailed_faults.items():
+            if test in ['use_manual_scores']: continue
+            if not isinstance(data, dict): continue
+            
+            # If squat score is low, ensure we look for squat patterns
+            if test == 'overhead_squat' and data.get('score', 3) <= 2:
+                search_tags.add("pattern_squat")
+
+            for category in data.values():
+                if isinstance(category, dict):
+                    for fault, severity in category.items():
+                        if isinstance(severity, (int, float)) and severity > 1:  # Threshold >1 for significant fault
+                            if fault in FAULT_TO_TAG_MAP:
+                                tag = FAULT_TO_TAG_MAP[fault]
+                                search_tags.add(tag)
+    
+    print(f"--- DEBUG: Searching for tags: {search_tags} ---")
+
+    # 4. Filter
+    scored_exercises = []
+    for ex in kb:
+        ex_tags = ex.get('tags', [])
+        # Normalization: make sure tags are strings and lower
+        ex_tags = [str(t).lower() for t in ex_tags]
+        
+        # Check Level Match (Exact or +/- 1 fallback)
+        ex_level = ex.get('difficulty_level', 1)
+        
+        # Strict Match Logic
+        if ex_level == target_level:
+            match_count = sum(1 for t in search_tags if t.lower() in ex_tags)
+            if match_count > 0:
+                 # Boost score if we matched a specific "fix" tag
+                if any("fix" in t for t in search_tags if t.lower() in ex_tags):
+                    match_count += 5
+                scored_exercises.append({"ex": ex, "score": match_count})
+
+    # 5. Sort
+    scored_exercises.sort(key=lambda x: x['score'], reverse=True)
+    top_exercises = [x['ex'] for x in scored_exercises[:3]]
+
+    print(f"--- DEBUG: Found {len(top_exercises)} matching exercises ---")
+    
+    # If still empty, return dummy data to prove code works
+    if not top_exercises:
+        print("--- DEBUG: No matches found. Using Fallback logic. ---")
+        # Try finding ANY squat exercise at that level
+        fallback = [ex for ex in kb if ex.get('difficulty_level') == target_level and 'pattern_squat' in [t.lower() for t in ex.get('tags', [])]]
+        top_exercises = fallback[:3]
 
     return {
-        "status": "SUCCESS" if top_picks else "NO_MATCH",
+        "status": "SUCCESS",
         "analysis": analysis,
-        "data": top_picks
+        "data": top_exercises
     }

@@ -1,17 +1,19 @@
+# main.py: Added use_manual_scores to model. Removed pain_present. Pass flag to analyzer.
+
 import json
 import hashlib
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
-# --- Import your modules ---
+# ── Core modules ──
 from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
-from src.rag.generator import generate_workout_plan  # Assuming this exists; adjust path if needed
+from src.rag.generator import generate_workout_plan
 
-app = FastAPI(title="FMS Smart Coach API", version="3.1")
+app = FastAPI(title="FMS Smart Coach API", version="3.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,14 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global Cache for Consistency
 RESPONSE_CACHE = {}
 
-# ==========================================
-#  STEP 1: DEFINE SUB-MODELS (Aligned with Frontend)
-# ==========================================
+# ────────────────────────────────────────────────
+# Pydantic Models 
+# ────────────────────────────────────────────────
 
-# 1. Overhead Squat (OHS)
 class OS_TrunkTorso(BaseModel):
     upright_torso: int = Field(..., ge=0, le=4)
     excessive_forward_lean: int = Field(..., ge=0, le=4)
@@ -61,7 +61,6 @@ class OverheadSquatData(BaseModel):
     feet: OS_Feet
     upper_body_bar_position: OS_UpperBodyBarPosition
 
-# 2. Hurdle Step
 class HS_PelvisCoreControl(BaseModel):
     pelvis_stable: int = Field(..., ge=0, le=4)
     pelvic_drop_trendelenburg: int = Field(..., ge=0, le=4)
@@ -86,7 +85,6 @@ class HurdleStepData(BaseModel):
     stance_leg: HS_StanceLeg
     stepping_leg: HS_SteppingLeg
 
-# 3. Inline Lunge
 class IL_Alignment(BaseModel):
     head_neutral: int = Field(..., ge=0, le=4)
     forward_head: int = Field(..., ge=0, le=4)
@@ -112,7 +110,6 @@ class InlineLungeData(BaseModel):
     lower_body_control: IL_LowerBodyControl
     balance_stability: IL_BalanceStability
 
-# 4. Shoulder Mobility
 class SM_ReachQuality(BaseModel):
     hands_within_fist_distance: int = Field(..., ge=0, le=4)
     hands_within_hand_length: int = Field(..., ge=0, le=4)
@@ -135,7 +132,6 @@ class ShoulderMobilityData(BaseModel):
     compensation: SM_Compensation
     pain: SM_Pain
 
-# 5. Active Straight Leg Raise (ASLR)
 class ASLR_NonMovingLeg(BaseModel):
     remains_flat: int = Field(..., ge=0, le=4)
     knee_bends: int = Field(..., ge=0, le=4)
@@ -144,7 +140,7 @@ class ASLR_NonMovingLeg(BaseModel):
 
 class ASLR_MovingLeg(BaseModel):
     gt_80_hip_flexion: int = Field(..., ge=0, le=4)
-    _60_80_hip_flexion: int = Field(..., ge=0, le=4)
+    between_60_80_hip_flexion: int = Field(..., ge=0, le=4) # Matches analyzer key now
     lt_60_hip_flexion: int = Field(..., ge=0, le=4)
     hamstring_restriction: int = Field(..., ge=0, le=4)
 
@@ -159,7 +155,6 @@ class ASLRData(BaseModel):
     moving_leg: ASLR_MovingLeg
     pelvic_control: ASLR_PelvicControl
 
-# 6. Trunk Stability Push-Up
 class TSP_BodyAlignment(BaseModel):
     neutral_spine_maintained: int = Field(..., ge=0, le=4)
     sagging_hips: int = Field(..., ge=0, le=4)
@@ -181,7 +176,6 @@ class TSPData(BaseModel):
     core_control: TSP_CoreControl
     upper_body: TSP_UpperBody
 
-# 7. Rotary Stability
 class RS_DiagonalPattern(BaseModel):
     smooth_controlled: int = Field(..., ge=0, le=4)
     loss_of_balance: int = Field(..., ge=0, le=4)
@@ -203,7 +197,6 @@ class RSData(BaseModel):
     spinal_control: RS_SpinalControl
     symmetry: RS_Symmetry
 
-# MASTER REQUEST MODEL
 class FMSProfileRequest(BaseModel):
     overhead_squat: OverheadSquatData
     hurdle_step: HurdleStepData
@@ -212,76 +205,69 @@ class FMSProfileRequest(BaseModel):
     active_straight_leg_raise: ASLRData
     trunk_stability_pushup: TSPData
     rotary_stability: RSData
-    pain_present: bool = False
+    use_manual_scores: bool = False  # New flag for coach override
 
-# ==========================================
-#  STEP 2: THE ENDPOINT
-# ==========================================
 @app.post("/generate-workout")
-async def generate_workout(profile: FMSProfileRequest, background_tasks: BackgroundTasks):
-    
-    # 1. Convert complex nested model to dict
+async def generate_workout(profile: FMSProfileRequest):
     full_data = profile.dict()
 
-    # 2. Extract SIMPLE scores for compatibility (but analyzer uses full_data)
+    # Create simplified dictionary for retriever
     simple_scores = {
-        "overhead_squat": full_data['overhead_squat']['score'],
-        "hurdle_step": full_data['hurdle_step']['score'],
-        "inline_lunge": full_data['inline_lunge']['score'],
-        "shoulder_mobility": full_data['shoulder_mobility']['score'],
-        "active_straight_leg_raise": full_data['active_straight_leg_raise']['score'],
-        "trunk_stability_pushup": full_data['trunk_stability_pushup']['score'],
-        "rotary_stability": full_data['rotary_stability']['score']
+        "overhead_squat": full_data["overhead_squat"]["score"],
+        "hurdle_step": full_data["hurdle_step"]["score"],
+        "inline_lunge": full_data["inline_lunge"]["score"],
+        "shoulder_mobility": full_data["shoulder_mobility"]["score"],
+        "active_straight_leg_raise": full_data["active_straight_leg_raise"]["score"],
+        "trunk_stability_pushup": full_data["trunk_stability_pushup"]["score"],
+        "rotary_stability": full_data["rotary_stability"]["score"],
     }
 
-    # 3. CACHE CHECK
+    # Cache mechanism
     cache_key = hashlib.md5(json.dumps(full_data, sort_keys=True).encode()).hexdigest()
     if cache_key in RESPONSE_CACHE:
         return RESPONSE_CACHE[cache_key]
 
-    # 4. RUN ANALYZER (uses full profile for effective scores)
+    # 1. ANALYZE (Determine Logic/Level)
     try:
-        analysis = analyze_fms_profile(full_data)
+        analysis = analyze_fms_profile(full_data, use_manual_scores=full_data.get('use_manual_scores', False))
+        print(f"DEBUG: Analysis result: {analysis}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analyzer Error: {str(e)}")
 
-    if analysis.get('status') == "STOP":
+    if analysis.get("status") == "STOP":
         return {
-            "session_title": "Medical Referral Recommended",
-            "coach_summary": analysis.get('reason', 'Severe issues detected. Consult a professional.'),
+            "session_title": "Medical Referral Required",
+            "coach_summary": analysis.get("reason", "Pain detected."),
             "exercises": [],
             "difficulty_color": "Red"
         }
 
-    # 5. RUN RETRIEVER (pass simple_scores for legacy, full_data as detailed_faults)
+    # 2. RETRIEVE (Get Exercises)
     try:
-        retrieval_result = get_exercises_by_profile(simple_scores, detailed_faults=full_data)
-        exercises = retrieval_result['data']
+        retrieval_result = get_exercises_by_profile(
+            simple_scores=simple_scores,
+            detailed_faults=full_data
+        )
+        exercises = retrieval_result["data"]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retriever Error: {str(e)}")
 
-    if not exercises:
-        return {
-            "session_title": "General Patterning Session",
-            "coach_summary": "No specific correctives matched. Focus on foundational movement.",
-            "exercises": [],
-            "difficulty_color": "Yellow"
-        }
-
-    # 6. RUN GENERATOR
+    # 3. GENERATE (LLM Plan)
     try:
-        # Enrich analysis with exercises and faults
         enriched_analysis = analysis.copy()
-        enriched_analysis['detailed_faults'] = full_data
-        enriched_analysis['selected_exercises'] = exercises
-
+        enriched_analysis["detailed_faults"] = full_data
+        
         final_plan = generate_workout_plan(enriched_analysis, exercises)
+        
+        # Ensure consistency in difficulty color based on level
+        level = analysis.get("target_level", 1)
+        # Only overwrite if not error
+        if final_plan.get("difficulty_color") != "Red":
+             final_plan["difficulty_color"] = "Red" if level <= 3 else "Yellow" if level <= 6 else "Green"
 
-        # Add difficulty color based on level
-        level_to_color = {1: "Red", 3: "Yellow", 5: "Yellow", 7: "Green", 9: "Green"}
-        final_plan['difficulty_color'] = level_to_color.get(analysis['target_level'], "Yellow")
+        # Add effective_scores to response
+        final_plan["effective_scores"] = analysis.get("effective_scores", {})
 
-        # Cache the result
         RESPONSE_CACHE[cache_key] = final_plan
         return final_plan
 

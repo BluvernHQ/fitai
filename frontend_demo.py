@@ -4,6 +4,10 @@ import requests
 # CONFIGURATION
 API_URL = "http://127.0.0.1:8000/generate-workout"
 
+# Initialize session state for manual override
+if 'use_manual_scores' not in st.session_state:
+    st.session_state.use_manual_scores = False
+
 # PAGE SETUP
 st.set_page_config(page_title="FMS Smart Coach", page_icon="🏋️", layout="wide")
 
@@ -17,13 +21,30 @@ with st.form("fms_input_form"):
     st.subheader("📝 Athlete Scorecard & Fault Analysis")
     st.info("Enter the raw scores (0-3) and rate specific faults (0-4) where 0 is no fault and 4 is severe.")
 
+    # Checkbox controls override
+    use_manual_scores = st.checkbox(
+        "Use manual FMS scores (override auto-calculation)",
+        value=st.session_state.use_manual_scores,
+        key="manual_override_checkbox"
+    )
+
+    # Sync checkbox with session state
+    st.session_state.use_manual_scores = use_manual_scores
+
+    # When unchecked, force scores to 0 (even if previously set)
+    default_score = 0 if not use_manual_scores else None
+
+    # Sliders are disabled when override is off
+    slider_disabled = not use_manual_scores
+
     # Create a grid layout using columns
     # Row 1: Deep Squat & Hurdle Step
     col1, col2 = st.columns(2)
 
     with col1:
-        with st.expander("1. Overhead Squat (OHS)", expanded=True):
-            ds_score = st.slider("Score", 0, 3, 2, key="ds_score")
+        # UI says "Overhead Squat", but backend typically expects "deep_squat" logic
+        with st.expander("1. Overhead Squat (Deep Squat)", expanded=True):
+            ds_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="ds_score")
             st.markdown("---")
             # Trunk & Torso
             st.markdown("**Trunk & Torso**")
@@ -49,11 +70,11 @@ with st.form("fms_input_form"):
             ds_upper_bar_aligned_over_mid_foot = st.number_input("Bar aligned over mid-foot", 0, 4, 0, key="ds_upper_bar_aligned_over_mid_foot")
             ds_upper_bar_drifts_forward = st.number_input("Bar drifts forward", 0, 4, 0, key="ds_upper_bar_drifts_forward")
             ds_upper_arms_fall_forward = st.number_input("Arms fall forward", 0, 4, 0, key="ds_upper_arms_fall_forward")
-            ds_upper_shoulder_mobility_restriction_suspected = st.number_input("Shoulder mobility restriction suspected", 0, 4, 0, key="ds_upper_shoulder_mobility_restriction_suspected")
+            ds_upper_shoulder_mobility_restriction_suspected = st.number_input("Shoulder restriction suspected", 0, 4, 0, key="ds_upper_shoulder_mobility_restriction_suspected")
 
     with col2:
         with st.expander("2. Hurdle Step"):
-            hs_score = st.slider("Score", 0, 3, 2, key="hs_score")
+            hs_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="hs_score")
             st.markdown("---")
             # Pelvis & Core Control
             st.markdown("**Pelvis & Core Control**")
@@ -79,7 +100,7 @@ with st.form("fms_input_form"):
 
     with col3:
         with st.expander("3. Inline Lunge"):
-            il_score = st.slider("Score", 0, 3, 2, key="il_score")
+            il_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="il_score")
             st.markdown("---")
             # Alignment
             st.markdown("**Alignment**")
@@ -103,7 +124,7 @@ with st.form("fms_input_form"):
 
     with col4:
         with st.expander("4. Shoulder Mobility"):
-            sm_score = st.slider("Score", 0, 3, 2, key="sm_score")
+            sm_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="sm_score")
             st.markdown("---")
             # Reach Quality
             st.markdown("**Reach Quality**")
@@ -127,7 +148,7 @@ with st.form("fms_input_form"):
 
     with col5:
         with st.expander("5. Active Straight Leg Raise (ASLR)"):
-            aslr_score = st.slider("Score", 0, 3, 2, key="aslr_score")
+            aslr_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="aslr_score")
             st.markdown("---")
             # Non-Moving Leg
             st.markdown("**Non-Moving Leg**")
@@ -138,7 +159,7 @@ with st.form("fms_input_form"):
             # Moving Leg
             st.markdown("**Moving Leg**")
             aslr_moving_gt_80_hip_flexion = st.number_input(">80° hip flexion", 0, 4, 0, key="aslr_moving_gt_80_hip_flexion")
-            aslr_moving_60_80_hip_flexion = st.number_input("60–80° hip flexion", 0, 4, 0, key="aslr_moving_60_80_hip_flexion")
+            aslr_moving_60_to_80_deg = st.number_input("60–80° hip flexion", 0, 4, 0, key="aslr_moving_60_to_80_deg")
             aslr_moving_lt_60_hip_flexion = st.number_input("<60° hip flexion", 0, 4, 0, key="aslr_moving_lt_60_hip_flexion")
             aslr_moving_hamstring_restriction = st.number_input("Hamstring restriction", 0, 4, 0, key="aslr_moving_hamstring_restriction")
             # Pelvic Control
@@ -149,7 +170,7 @@ with st.form("fms_input_form"):
 
     with col6:
         with st.expander("6. Trunk Stability Push-Up"):
-            tsp_score = st.slider("Score", 0, 3, 2, key="tsp_score")
+            tsp_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="tsp_score")
             st.markdown("---")
             # Body Alignment
             st.markdown("**Body Alignment**")
@@ -169,7 +190,7 @@ with st.form("fms_input_form"):
 
     with col7:
         with st.expander("7. Rotary Stability"):
-            rs_score = st.slider("Score", 0, 3, 2, key="rs_score")
+            rs_score = st.slider("Score", 0, 3, 0, disabled=slider_disabled, key="rs_score")
             st.markdown("---")
             # Diagonal Pattern
             st.markdown("**Diagonal Pattern**")
@@ -294,7 +315,7 @@ if submit_btn:
             },
             "moving_leg": {
                 "gt_80_hip_flexion": aslr_moving_gt_80_hip_flexion,
-                "60_80_hip_flexion": aslr_moving_60_80_hip_flexion,
+                "between_60_80_hip_flexion": aslr_moving_60_to_80_deg,
                 "lt_60_hip_flexion": aslr_moving_lt_60_hip_flexion,
                 "hamstring_restriction": aslr_moving_hamstring_restriction
             },
@@ -339,8 +360,8 @@ if submit_btn:
                 "left_side_deficit": rs_symmetry_left_side_deficit,
                 "right_side_deficit": rs_symmetry_right_side_deficit
             }
-        },
-        "pain_present": False
+        }
+        # No "pain_present"
     }
 
     st.divider()
@@ -351,6 +372,11 @@ if submit_btn:
             if response.status_code == 200:
                 data = response.json()
                 
+                # Display effective scores if available
+                if 'effective_scores' in data:
+                    st.subheader("Calculated Effective FMS Scores (Based on Faults)")
+                    st.json(data['effective_scores'])
+                
                 # --- RESULTS DISPLAY ---
                 color_map = {"Green": "green", "Yellow": "orange", "Red": "red"}
                 ui_color = color_map.get(data.get("difficulty_color", "Green"), "blue")
@@ -360,9 +386,7 @@ if submit_btn:
                 
                 st.markdown("### 📋 Prescribed Exercises")
                 
-                # Dynamic columns for exercises
                 if data['exercises']:
-                    # Use a container for the grid
                     grid = st.columns(3)
                     for i, exercise in enumerate(data['exercises']):
                         with grid[i % 3]:
