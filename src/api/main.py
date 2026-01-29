@@ -1,5 +1,4 @@
-# main.py: Added use_manual_scores to model. Removed pain_present. Pass flag to analyzer.
-
+# main.py
 import json
 import hashlib
 from fastapi import FastAPI, HTTPException
@@ -7,11 +6,53 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 from typing import List, Dict, Any
+from datetime import datetime
+
+# ── Database imports ──
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy import Column, Integer, JSON, DateTime
+import os
+from pydantic_settings import BaseSettings
 
 # ── Core modules ──
 from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
+
+# ────────────────────────────────────────────────
+# Database Configuration
+# ────────────────────────────────────────────────
+
+class Settings(BaseSettings):
+    DATABASE_URL: str
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+settings = Settings()
+
+engine = create_async_engine(settings.DATABASE_URL, echo=True)  # echo=True for SQL debug logs
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+class Base(DeclarativeBase):
+    pass
+
+class FMSResult(Base):
+    __tablename__ = "fms_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    input_profile = Column(JSON, nullable=False)
+    effective_scores = Column(JSON, nullable=True)
+    analysis = Column(JSON, nullable=True)
+    exercises = Column(JSON, nullable=True)
+    final_plan = Column(JSON, nullable=True)
+
+# ────────────────────────────────────────────────
+# FastAPI App
+# ────────────────────────────────────────────────
 
 app = FastAPI(title="FMS Smart Coach API", version="3.2")
 
@@ -26,7 +67,17 @@ app.add_middleware(
 RESPONSE_CACHE = {}
 
 # ────────────────────────────────────────────────
-# Pydantic Models 
+# Startup: Create tables if not exist
+# ────────────────────────────────────────────────
+
+@app.on_event("startup")
+async def startup_event():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("Database tables created/verified.")
+
+# ────────────────────────────────────────────────
+# Pydantic Models (your full models here)
 # ────────────────────────────────────────────────
 
 class OS_TrunkTorso(BaseModel):
@@ -140,7 +191,7 @@ class ASLR_NonMovingLeg(BaseModel):
 
 class ASLR_MovingLeg(BaseModel):
     gt_80_hip_flexion: int = Field(..., ge=0, le=4)
-    between_60_80_hip_flexion: int = Field(..., ge=0, le=4) # Matches analyzer key now
+    between_60_80_hip_flexion: int = Field(..., ge=0, le=4)
     lt_60_hip_flexion: int = Field(..., ge=0, le=4)
     hamstring_restriction: int = Field(..., ge=0, le=4)
 
@@ -205,7 +256,11 @@ class FMSProfileRequest(BaseModel):
     active_straight_leg_raise: ASLRData
     trunk_stability_pushup: TSPData
     rotary_stability: RSData
-    use_manual_scores: bool = False  # New flag for coach override
+    use_manual_scores: bool = False
+
+# ────────────────────────────────────────────────
+# Endpoint
+# ────────────────────────────────────────────────
 
 @app.post("/generate-workout")
 async def generate_workout(profile: FMSProfileRequest):
@@ -227,7 +282,7 @@ async def generate_workout(profile: FMSProfileRequest):
     if cache_key in RESPONSE_CACHE:
         return RESPONSE_CACHE[cache_key]
 
-    # 1. ANALYZE (Determine Logic/Level)
+    # 1. ANALYZE
     try:
         analysis = analyze_fms_profile(full_data, use_manual_scores=full_data.get('use_manual_scores', False))
         print(f"DEBUG: Analysis result: {analysis}")
@@ -242,7 +297,7 @@ async def generate_workout(profile: FMSProfileRequest):
             "difficulty_color": "Red"
         }
 
-    # 2. RETRIEVE (Get Exercises)
+    # 2. RETRIEVE
     try:
         retrieval_result = get_exercises_by_profile(
             simple_scores=simple_scores,
@@ -252,27 +307,39 @@ async def generate_workout(profile: FMSProfileRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retriever Error: {str(e)}")
 
-    # 3. GENERATE (LLM Plan)
+    # 3. GENERATE
     try:
         enriched_analysis = analysis.copy()
         enriched_analysis["detailed_faults"] = full_data
         
         final_plan = generate_workout_plan(enriched_analysis, exercises)
         
-        # Ensure consistency in difficulty color based on level
         level = analysis.get("target_level", 1)
-        # Only overwrite if not error
         if final_plan.get("difficulty_color") != "Red":
-             final_plan["difficulty_color"] = "Red" if level <= 3 else "Yellow" if level <= 6 else "Green"
+            final_plan["difficulty_color"] = "Red" if level <= 3 else "Yellow" if level <= 6 else "Green"
 
-        # Add effective_scores to response
         final_plan["effective_scores"] = analysis.get("effective_scores", {})
+
+        # ── SAVE TO NEON DB ──
+        async with AsyncSessionLocal() as session:
+            new_result = FMSResult(
+                input_profile=full_data,
+                effective_scores=final_plan.get("effective_scores"),
+                analysis=analysis,
+                exercises=exercises,
+                final_plan=final_plan
+            )
+            session.add(new_result)
+            await session.commit()
+            await session.refresh(new_result)
+            print(f"DEBUG: Saved FMS result to Neon DB with ID: {new_result.id}")
 
         RESPONSE_CACHE[cache_key] = final_plan
         return final_plan
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generator Error: {str(e)}")
+        print(f"ERROR during generation or DB save: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Generator or DB Error: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
