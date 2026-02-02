@@ -6,16 +6,13 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select # <--- ADDED THIS
-from typing import Dict, Any, Optional
+from sqlalchemy.future import select
+from typing import Dict, Any
 
 # ── IMPORTS ──
 from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
-
-# Import the NEW database models
-# ensure User is imported here
 from src.database import AsyncSessionLocal, AssessmentInput, AssessmentScore, User, engine, Base
 
 # ────────────────────────────────────────────────
@@ -40,7 +37,7 @@ app.add_middleware(
 )
 
 # ────────────────────────────────────────────────
-# Pydantic Models (Input Validation)
+# Pydantic Models (Validation)
 # ────────────────────────────────────────────────
 
 # --- 1. DEEP SQUAT ---
@@ -249,115 +246,111 @@ async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
 
+# ────────────────────────────────────────────────
+# MAIN ENDPOINT - Cleaned & Fixed
+# ────────────────────────────────────────────────
 @app.post("/generate-workout")
 async def generate_workout(
-    profile: FMSProfileRequest, 
+    profile: FMSProfileRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    1. Check if User 1 exists (Create if not).
-    2. Receives Sub-Inputs (nested JSON).
-    3. Calculates Final Scores via Analyzer.
-    4. Saves Raw Inputs -> Table 1.
-    5. Saves Main Scores -> Table 2.
-    6. Generates Workout Plan.
-    """
-    
     full_data = profile.dict()
 
-    # ─────────────────────────────────────────────────
-    # 0. ENSURE USER EXISTS (FIX FOR YOUR ERROR)
-    # ─────────────────────────────────────────────────
+    # 0. Ensure test user exists
     try:
-        # Check if user 1 exists
         result = await db.execute(select(User).where(User.id == 1))
-        user = result.scalars().first()
-        
-        if not user:
-            print("⚠️ User 1 not found. Creating test user...")
-            new_user = User(id=1, username="test_athlete", email="test@example.com")
-            db.add(new_user)
-            await db.commit() # Commit so the user is available for the Foreign Key
+        if not result.scalars().first():
+            db.add(User(id=1, username="test_athlete", email="test@example.com"))
+            await db.commit()
     except Exception as e:
-        print(f"User Creation Error: {e}")
-        # Proceeding anyway just in case it was a race condition
+        print(f"User check warning: {e}")
 
     # ─────────────────────────────────────────────────
-    # 1. ANALYZE (Calculate Scores)
+    # 1. Analyze FMS profile
     # ─────────────────────────────────────────────────
     try:
-        analysis = analyze_fms_profile(full_data, use_manual_scores=full_data.get('use_manual_scores', False))
+        analysis = analyze_fms_profile(
+            full_data,
+            use_manual_scores=full_data.get('use_manual_scores', False)
+        )
+        
+        effective_scores = analysis.get("effective_scores", {})
+        print("\n" + "="*40)
+        print(f"🧐 DEBUG: CALCULATED SCORES: {effective_scores}")
+        print(f"🧐 DEBUG: ANALYSIS STATUS: {analysis.get('status')}")
+        print("="*40 + "\n")
+
     except Exception as e:
-        print(f"Analyzer Error: {e}")
         raise HTTPException(status_code=500, detail=f"Analyzer Error: {str(e)}")
 
-    effective_scores = analysis.get("effective_scores", {})
-    total_score = analysis.get("total_score", 0)
-
-    # ─────────────────────────────────────────────────
-    # 2. SAVE TO DATABASE (Multi-Table)
-    # ─────────────────────────────────────────────────
-    try:
-        # 
-
-        # A. TABLE 1: RAW SUB-INPUTS
-        input_entry = AssessmentInput(
-            user_id=1,  # Now safe because we created User 1 above
-            raw_json_data=full_data
-        )
-        db.add(input_entry)
-        await db.flush() 
-
-        # B. TABLE 2: MAIN SCORES
-        score_entry = AssessmentScore(
-            input_id=input_entry.id, 
-            overhead_squat=effective_scores.get('overhead_squat', 0),
-            hurdle_step=effective_scores.get('hurdle_step', 0),
-            inline_lunge=effective_scores.get('inline_lunge', 0),
-            shoulder_mobility=effective_scores.get('shoulder_mobility', 0),
-            active_straight_leg_raise=effective_scores.get('active_straight_leg_raise', 0),
-            trunk_stability_pushup=effective_scores.get('trunk_stability_pushup', 0),
-            rotary_stability=effective_scores.get('rotary_stability', 0),
-            total_score=total_score
-        )
-        db.add(score_entry)
-        
-        await db.commit()
-        print(f"✅ DB Success: Inputs (ID {input_entry.id}) and Scores saved.")
-
-    except Exception as e:
-        await db.rollback()
-        print(f"❌ Database Error: {str(e)}")
-        # We allow the flow to continue so you still get your workout response
-
-    # ─────────────────────────────────────────────────
-    # 3. RETRIEVE & GENERATE WORKOUT
-    # ─────────────────────────────────────────────────
+    # Early return if pain detected
     if analysis.get("status") == "STOP":
         return {
             "session_title": "Medical Referral Required",
-            "coach_summary": analysis.get("reason", "Pain detected."),
+            "coach_summary": f"Pain detected: {analysis.get('reason', 'Pain reported during screening')}",
             "exercises": [],
             "difficulty_color": "Red"
         }
 
+    # ─────────────────────────────────────────────────
+    # 2. Retrieve relevant exercises
+    # ─────────────────────────────────────────────────
     try:
         retrieval_result = await get_exercises_by_profile(
             simple_scores=effective_scores,
             detailed_faults=full_data
         )
+        
         exercises = retrieval_result.get("data", [])
         
+        print(f"🧐 DEBUG: RETRIEVED {len(exercises)} EXERCISES")
+        if exercises:
+            names = [ex.get('exercise_name', 'MISSING_NAME') for ex in exercises]
+            print(f"Top exercises: {names[:5]}")
+        else:
+            print("⚠️ WARNING: No exercises found for this profile!")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retrieval Error: {str(e)}")
+
+    # ─────────────────────────────────────────────────
+    # 3. Generate workout plan
+    # ─────────────────────────────────────────────────
+    try:
         final_plan = generate_workout_plan(analysis, exercises)
-        
-        final_plan["assessment_id"] = input_entry.id if 'input_entry' in locals() else None
         final_plan["calculated_scores"] = effective_scores
+
+        # ─────────────────────────────────────────────────
+        # 4. Save to database (non-blocking)
+        # ─────────────────────────────────────────────────
+        try:
+            input_entry = AssessmentInput(user_id=1, raw_json_data=full_data)
+            db.add(input_entry)
+            await db.flush()
+
+            score_entry = AssessmentScore(
+                input_id=input_entry.id,
+                overhead_squat=effective_scores.get('overhead_squat', 0),
+                hurdle_step=effective_scores.get('hurdle_step', 0),
+                inline_lunge=effective_scores.get('inline_lunge', 0),
+                shoulder_mobility=effective_scores.get('shoulder_mobility', 0),
+                active_straight_leg_raise=effective_scores.get('active_straight_leg_raise', 0),
+                trunk_stability_pushup=effective_scores.get('trunk_stability_pushup', 0),
+                rotary_stability=effective_scores.get('rotary_stability', 0),
+                total_score=analysis.get("total_score", 0)
+            )
+            db.add(score_entry)
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            print(f"❌ DB Save Error (non-blocking): {str(e)}")
 
         return final_plan
 
     except Exception as e:
-        print(f"Generation Error: {e}")
+        print(f"Generation Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Generation Error: {str(e)}")
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

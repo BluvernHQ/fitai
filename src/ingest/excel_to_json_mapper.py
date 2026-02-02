@@ -19,6 +19,17 @@ TAG_RULES = {
     "band": ["fix_knee_valgus", "rnt_correction"], # Bands often fix valgus
     "valgus": ["fix_knee_valgus"],
     "glute": ["fix_knee_valgus", "glute_activation"],
+
+    # Added for more differentiation
+    "pain": ["stop"],
+    "asymmetry": ["fix_asymmetry"],
+    "rotation": ["fix_rotary_instability"],
+    "pelvic": ["fix_pelvic_drop", "fix_pelvic_tilt"],
+    "hip": ["pattern_leg_raise", "fix_hip_rotation"],
+    "shoulder": ["pattern_shoulder"],
+    "core": ["fix_core_stability"],
+    "lumbar": ["fix_lumbar_flexion", "fix_lumbar_extension"],
+    "rib": ["fix_rib_flare"],
     
     # CORE / STABILITY FAULTS
     "plank": ["fix_lumbar_extension", "core_stability"],

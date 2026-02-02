@@ -1,6 +1,5 @@
-# generator.py: Removed pain_present check (now handled per-test in analyzer).
-
 import os
+import uuid
 from typing import List, Dict, Any
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- UI OUTPUT SCHEMA ---
+# ── UI OUTPUT SCHEMA ──
 class ExerciseCard(BaseModel):
     name: str = Field(description="Exact exercise name from database")
     tag: str = Field(description="Short uppercase badge, e.g. 'ANKLE MOBILITY', 'KNEE TRACKING'")
@@ -25,137 +24,141 @@ class WorkoutSession(BaseModel):
     coach_summary: str = Field(description="2-4 sentence explanation of why these exercises were chosen.")
     exercises: List[ExerciseCard] = Field(default_factory=list, description="List of exercises")
 
-# --- HELPER: FORMAT HIGH-SEVERITY FAULTS ---
+# ── HELPER: FORMAT FAULTS ──
 def format_faults_for_prompt(full_data: Dict[str, Any]) -> str:
-    """
-    Summarizes only severe faults (>=3) with context.
-    """
-    fault_summary = []
-    pain_detected = False  # Now check per-test
+    if not full_data:
+        return "No specific faults data available."
 
+    fault_summary = []
+    
     for test_name, test_data in full_data.items():
-        # Skip non-dictionary items
-        if not isinstance(test_data, dict) or 'score' not in test_data:
+        if not isinstance(test_data, dict):
             continue
 
         test_faults = []
-        # Iterate over sub-categories (e.g., "trunk_torso", "lower_limb")
         for category, details in test_data.items():
             if isinstance(details, dict):
                 for fault_name, severity in details.items():
-                    # Check severity threshold
-                    if isinstance(severity, (int, float)) and severity >= 3:
-                        clean_name = fault_name.replace('_', ' ').title()
-                        interpretation = ""
-                        
-                        # Add quick FMS context for the LLM
-                        if 'heels_lift' in fault_name:
-                            interpretation = "-> ankle restriction suspected"
-                        elif 'knee_valgus' in fault_name:
-                            interpretation = "-> glute weakness / motor control"
-                        elif 'forward_lean' in fault_name:
-                            interpretation = "-> thoracic/core weakness"
-                        elif 'pain_reported' in fault_name and severity > 0:
-                            pain_detected = True
-
-                        test_faults.append(f"{clean_name} ({severity}/4) {interpretation}")
+                    try:
+                        score_val = int(severity)
+                        if score_val > 0:
+                            clean_name = fault_name.replace('_', ' ').title()
+                            interpretation = ""
+                            if 'heels_lift' in fault_name: interpretation = "→ ankle restriction"
+                            elif 'knee_valgus' in fault_name: interpretation = "→ glute weakness / activation needed"
+                            elif 'forward_lean' in fault_name: interpretation = "→ core / thoracic control"
+                            elif 'pain_reported' in fault_name: interpretation = "→ medical referral required"
+                            test_faults.append(f"{clean_name} ({score_val}) {interpretation}")
+                    except (ValueError, TypeError):
+                        continue
 
         if test_faults:
-            # Format: "Deep Squat (Score 1/3): - Heels Lift (3/4)"
             clean_test = test_name.replace('_', ' ').title()
-            fault_summary.append(f"**{clean_test}** (Score {test_data.get('score', '?')}/3):\n   - " + "\n   - ".join(test_faults))
+            fault_summary.append(f"**{clean_test}**: " + ", ".join(test_faults))
 
-    if pain_detected:
-        return "PAIN DETECTED - STOP TRAINING. REFER TO MEDICAL PRO.\n" + "\n".join(fault_summary)
-    
-    return "\n\n".join(fault_summary) if fault_summary else "No severe faults (>=3/4) detected."
+    return "\n".join(fault_summary) if fault_summary else "No severe faults detected."
 
-# --- MAIN GENERATOR FUNCTION ---
+# ── MAIN GENERATOR FUNCTION ──
 def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict[str, Any]]):
+    call_id = str(uuid.uuid4())[:8]
+    print(f"--- GENERATE CALL START [{call_id}] | received {len(exercises)} items ---")
+
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        return {"session_title": "Configuration Error", "coach_summary": "GROQ_API_KEY missing.", "exercises": []}
+        print(f"❌ Error [{call_id}]: GROQ_API_KEY is missing.")
+        return {"session_title": "Config Error", "coach_summary": "System configuration error (API Key).", "exercises": []}
 
-    # 1. Pain Override (Safety First) - Now based on analysis (per-test pain sets score=0, which triggers STOP in analyzer)
+    # Safety checks
     if analysis_context.get('status') == "STOP":
         return {
             "session_title": "Medical Referral Required",
-            "coach_summary": "Pain was reported during screening. Do NOT proceed with corrective exercise. Please consult a physical therapist or doctor.",
+            "coach_summary": "Pain was reported during screening. Do NOT proceed with corrective exercise. Please consult a medical professional.",
             "difficulty_color": "Red",
             "exercises": []
         }
 
-    # 2. Empty List Check (CRITICAL FIX)
-    # If retriever found nothing, do not call LLM. It will hallucinate.
     if not exercises:
         return {
-            "session_title": "Assessment Complete - No Specific Drills",
-            "coach_summary": "Based on the inputs, no specific corrective exercises were found in the database for this combination of faults and level. The athlete may be cleared for general training or requires a different database.",
+            "session_title": "Assessment Complete",
+            "coach_summary": "No specific corrective exercises matched your profile. You may be cleared for general activity.",
             "difficulty_color": "Green",
             "exercises": []
         }
 
-    # Sort for consistency
-    exercises = sorted(exercises, key=lambda x: x.get('exercise_name', ''))
-
-    # Setup LLM
-    llm = ChatGroq(
-        model_name="llama-3.3-70b-versatile",
-        temperature=0.0,  # Set to 0 for determinism
-        api_key=api_key,
-        model_kwargs={"seed": 42}
-    )
-
-    parser = JsonOutputParser(pydantic_object=WorkoutSession)
-
-    # Format exercises for prompt
-    exercise_text = "\n".join([
-        f"- **{ex.get('exercise_name', 'Unknown')}** (Level {ex.get('difficulty_level', '?')})\n"
-        f"  Tags: {', '.join(ex.get('tags', []))}\n"
-        f"  Description: {ex.get('description', 'No description')}"
-        for ex in exercises
-    ])
-
-    # Format faults
-    faults_text = format_faults_for_prompt(analysis_context.get('detailed_faults', {}))
-
-    # System Prompt
-    system_prompt = """
-    You are an expert FMS Strength Coach. Create a corrective workout plan.
-    
-    ### ATHLETE DATA
-    - Status: {status}
-    - Target Level: {level} ({reason})
-    - Top Faults: 
-    {faults_text}
-
-    ### AVAILABLE EXERCISES (STRICT CONSTRAINT)
-    You must construct the workout using ONLY the exercises listed below. Do not invent exercises.
-    {exercise_list}
-
-    ### INSTRUCTIONS
-    1. **Selection:** Choose the best 2-3 exercises from the list that address the 'Top Faults'. Prioritize exercises whose tags directly match the faults (e.g., 'fix_knee_valgus' for knee valgus fault).
-    2. **Cues:** Write a 'coach_tip' for each that specifically mentions the user's fault (e.g., "Squeeze glutes to stop knees caving in").
-    3. **Difficulty:** - If Target Level <= 3, Color = Red. 
-       - If Target Level 4-6, Color = Yellow.
-       - If Target Level >= 7, Color = Green.
-    4. **Output:** Return strict JSON matching the schema.
-
-    {format_instructions}
-    """
-
-    prompt = ChatPromptTemplate.from_template(
-        template=system_prompt,
-        partial_variables={"format_instructions": parser.get_format_instructions()}
-    )
-
-    chain = prompt | llm | parser
-
     try:
+        # ── ROBUST FILTERING & SORTING ───────────────────────────────────────
+        valid_exercises = []
+        for item in exercises:
+            if not isinstance(item, dict):
+                print(f"WARNING [{call_id}]: Skipping invalid item (not dict): {item}")
+                continue
+            name = item.get('exercise_name') or item.get('name') or "Unnamed Exercise"
+            valid_exercises.append(item)
+
+        if len(valid_exercises) != len(exercises):
+            print(f"WARNING [{call_id}]: Removed {len(exercises) - len(valid_exercises)} invalid items")
+
+        # Sort by exercise_name (case insensitive)
+        valid_exercises.sort(key=lambda x: (x.get('exercise_name') or "").lower())
+
+        # Prepare formatted list for prompt
+        formatted_exercises = []
+        for ex in valid_exercises:
+            name = ex.get('exercise_name', "Unknown Exercise")
+            level = ex.get('difficulty_level') or "?"
+            tags = ex.get('tags', [])
+            tag_str = ", ".join(tags) if isinstance(tags, list) else str(tags)
+            formatted_exercises.append(f"- **{name}** (Level {level})\n  Tags: {tag_str}")
+
+        exercise_text = "\n".join(formatted_exercises)
+
+        # Format faults
+        faults_text = format_faults_for_prompt(analysis_context.get('detailed_faults', {}))
+
+        # Setup LLM
+        llm = ChatGroq(
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.0,
+            api_key=api_key,
+            model_kwargs={"seed": 42}
+        )
+        parser = JsonOutputParser(pydantic_object=WorkoutSession)
+
+        # Enhanced prompt
+        system_prompt = """
+        You are an expert FMS Strength Coach. Create a corrective workout plan.
+
+        ### ATHLETE DATA
+        - Status: {status}
+        - Target Level: {level}
+        - Key Faults: 
+        {faults_text}
+
+        ### AVAILABLE EXERCISES (STRICT CONSTRAINT)
+        Use ONLY exercises from this list. Do NOT invent new ones.
+        Prioritize ones that best match the specific faults shown above.
+        {exercise_list}
+
+        ### INSTRUCTIONS
+        1. Select 3–5 most relevant exercises that address the key faults.
+        2. Create short, specific 'coach_tip' cues mentioning the actual fault.
+        3. Set difficulty_color: Red if severe faults, Yellow if moderate, Green if minor/cleared.
+        4. Return valid JSON matching the schema exactly.
+
+        {format_instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(
+            template=system_prompt,
+            partial_variables={"format_instructions": parser.get_format_instructions()}
+        )
+
+        chain = prompt | llm | parser
+
+        # Invoke
         response = chain.invoke({
             "status": analysis_context.get('status', 'TRAINING'),
             "level": str(analysis_context.get('target_level', 1)),
-            "reason": analysis_context.get('reason', 'General movement'),
             "faults_text": faults_text,
             "exercise_list": exercise_text
         })
@@ -163,13 +166,25 @@ def generate_workout_plan(analysis_context: Dict[str, Any], exercises: List[Dict
         # Fallback for missing fields
         if 'difficulty_color' not in response:
             response['difficulty_color'] = 'Yellow'
-        
+
+        print(f"--- GENERATE CALL END [{call_id}] | success ---")
         return response
 
     except Exception as e:
+        print(f"❌ GENERATION ERROR [{call_id}]: {str(e)}")
+        # Safe fallback
         return {
-            "session_title": "Generation Error",
-            "coach_summary": f"AI Generation failed: {str(e)}",
-            "difficulty_color": "Red",
-            "exercises": []
+            "session_title": "Workout Generated (Fallback)",
+            "coach_summary": "AI coach encountered an issue. Here's a basic plan based on retrieved exercises.",
+            "difficulty_color": "Yellow",
+            "exercises": [
+                {
+                    "name": ex.get('exercise_name', 'Exercise'),
+                    "tag": "CORRECTIVE",
+                    "sets_reps": "3 x 10",
+                    "tempo": "Controlled",
+                    "coach_tip": "Focus on perfect form."
+                }
+                for ex in valid_exercises[:3]
+            ]
         }
