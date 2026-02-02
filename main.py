@@ -13,7 +13,7 @@ from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
 # Import Database tools instead of redefining them
-from src.database import init_db, AsyncSessionLocal, FMSResult
+from src.database import init_db, AsyncSessionLocal, AssessmentLog
 
 # ────────────────────────────────────────────────
 # Lifecycle (Startup)
@@ -279,16 +279,49 @@ async def generate_workout(profile: FMSProfileRequest):
 
         # ── SAVE TO NEON DATABASE ──
         # Uses the FMSResult imported from src.database
-        async with AsyncSessionLocal() as session:
-            new_result = FMSResult(
-                input_profile=full_data,
-                effective_scores=final_plan.get("effective_scores"),
-                analysis_summary=analysis, # Note: Changed to match src.database name
-                final_plan_output=final_plan # Note: Changed to match src.database name
-            )
-            session.add(new_result)
-            await session.commit()
-            print(f"DEBUG: Saved FMS result to Neon DB.")
+        if full_data: 
+            async with AsyncSessionLocal() as session:
+                new_result = AssessmentLog(
+                    # --- Map the Inputs ---
+                    deep_squat_score = full_data.get("deep_squat"),
+                    
+                    hurdle_step_l = full_data.get("hurdle_step_l"),
+                    hurdle_step_r = full_data.get("hurdle_step_r"),
+                    hurdle_step_final = full_data.get("hurdle_step_score"), # Effective score
+                    
+                    inline_lunge_l = full_data.get("inline_lunge_l"),
+                    inline_lunge_r = full_data.get("inline_lunge_r"),
+                    inline_lunge_final = full_data.get("inline_lunge_score"),
+
+                    shoulder_mobility_l = full_data.get("shoulder_mobility_l"),
+                    shoulder_mobility_r = full_data.get("shoulder_mobility_r"),
+                    shoulder_clearing_pain = full_data.get("shoulder_clearing"),
+                    shoulder_mobility_final = full_data.get("shoulder_mobility_score"),
+
+                    aslr_l = full_data.get("active_straight_leg_raise_l"),
+                    aslr_r = full_data.get("active_straight_leg_raise_r"),
+                    aslr_final = full_data.get("active_straight_leg_raise_score"),
+
+                    trunk_stability_raw = full_data.get("trunk_stability_pushup"),
+                    extension_clearing_pain = full_data.get("extension_clearing"),
+                    trunk_stability_final = full_data.get("trunk_stability_score"),
+
+                    rotary_stability_l = full_data.get("rotary_stability_l"),
+                    rotary_stability_r = full_data.get("rotary_stability_r"),
+                    flexion_clearing_pain = full_data.get("flexion_clearing"),
+                    rotary_stability_final = full_data.get("rotary_stability_score"),
+
+                    total_fms_score = final_plan.get("effective_scores", {}).get("total_score", 0),
+                    predicted_level = "Calculated", 
+
+                    # --- Map the Outputs ---
+                    analysis_summary = analysis,
+                    final_plan_json = str(final_plan) # Convert the Dict to String for storage
+                )
+                
+                session.add(new_result)
+                await session.commit()
+                print(f"DEBUG: Saved FMS result to Neon DB.")
 
         RESPONSE_CACHE[cache_key] = final_plan
         return final_plan
