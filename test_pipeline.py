@@ -13,7 +13,7 @@ API_ENDPOINT = "http://127.0.0.1:8000/generate-workout"
 
 BATCH_SIZE = 5
 SKIP_FIRST_N = 13           # <--- we skip the first 13 newest records
-MAX_PROFILES_TO_TEST = 50   # safety limit after skipping
+MAX_PROFILES_TO_TEST = 5  # safety limit after skipping
 
 # ────────────────────────────────────────────────
 # Fetch real profiles — skipping the first N newest
