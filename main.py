@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import Optional, Dict, Any
 
-# ── IMPORTS FROM YOUR SRC ──
+# ── IMPORTS ──
+# Ensure these files exist in your src folder
 from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
-# Import Database tools instead of redefining them
 from src.database import init_db, AsyncSessionLocal, AssessmentLog
 
 # ────────────────────────────────────────────────
@@ -38,173 +38,193 @@ app.add_middleware(
 RESPONSE_CACHE = {}
 
 # ────────────────────────────────────────────────
-# Pydantic Models
+# Pydantic Models (Updated for L/R & Database)
 # ────────────────────────────────────────────────
 
+# --- 1. DEEP SQUAT ---
 class OS_TrunkTorso(BaseModel):
-    upright_torso: int = Field(..., ge=0, le=4)
-    excessive_forward_lean: int = Field(..., ge=0, le=4)
-    rib_flare: int = Field(..., ge=0, le=4)
-    lumbar_flexion: int = Field(..., ge=0, le=4)
-    lumbar_extension_sway_back: int = Field(..., ge=0, le=4)
+    upright_torso: int = 0
+    excessive_forward_lean: int = 0
+    rib_flare: int = 0
+    lumbar_flexion: int = 0
+    lumbar_extension_sway_back: int = 0
 
 class OS_LowerLimb(BaseModel):
-    knees_track_over_toes: int = Field(..., ge=0, le=4)
-    knee_valgus: int = Field(..., ge=0, le=4)
-    knee_varus: int = Field(..., ge=0, le=4)
-    uneven_depth: int = Field(..., ge=0, le=4)
+    knees_track_over_toes: int = 0
+    knee_valgus: int = 0
+    knee_varus: int = 0
+    uneven_depth: int = 0
 
 class OS_Feet(BaseModel):
-    heels_stay_down: int = Field(..., ge=0, le=4)
-    heels_lift: int = Field(..., ge=0, le=4)
-    excessive_pronation: int = Field(..., ge=0, le=4)
-    excessive_supination: int = Field(..., ge=0, le=4)
+    heels_stay_down: int = 0
+    heels_lift: int = 0
+    excessive_pronation: int = 0
+    excessive_supination: int = 0
 
 class OS_UpperBodyBarPosition(BaseModel):
-    bar_aligned_over_mid_foot: int = Field(..., ge=0, le=4)
-    bar_drifts_forward: int = Field(..., ge=0, le=4)
-    arms_fall_forward: int = Field(..., ge=0, le=4)
-    shoulder_mobility_restriction_suspected: int = Field(..., ge=0, le=4)
+    bar_aligned_over_mid_foot: int = 0
+    bar_drifts_forward: int = 0
+    arms_fall_forward: int = 0
+    shoulder_mobility_restriction_suspected: int = 0
 
 class OverheadSquatData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
     trunk_torso: OS_TrunkTorso
     lower_limb: OS_LowerLimb
     feet: OS_Feet
     upper_body_bar_position: OS_UpperBodyBarPosition
 
+# --- 2. HURDLE STEP ---
 class HS_PelvisCoreControl(BaseModel):
-    pelvis_stable: int = Field(..., ge=0, le=4)
-    pelvic_drop_trendelenburg: int = Field(..., ge=0, le=4)
-    excessive_rotation: int = Field(..., ge=0, le=4)
-    loss_of_balance: int = Field(..., ge=0, le=4)
+    pelvis_stable: int = 0
+    pelvic_drop_trendelenburg: int = 0
+    excessive_rotation: int = 0
+    loss_of_balance: int = 0
 
 class HS_StanceLeg(BaseModel):
-    knee_stable: int = Field(..., ge=0, le=4)
-    knee_valgus: int = Field(..., ge=0, le=4)
-    knee_varus: int = Field(..., ge=0, le=4)
-    ankle_instability: int = Field(..., ge=0, le=4)
+    knee_stable: int = 0
+    knee_valgus: int = 0
+    knee_varus: int = 0
+    ankle_instability: int = 0
 
 class HS_SteppingLeg(BaseModel):
-    clears_hurdle_smoothly: int = Field(..., ge=0, le=4)
-    toe_drag: int = Field(..., ge=0, le=4)
-    hip_flexion_restriction: int = Field(..., ge=0, le=4)
-    asymmetrical_movement: int = Field(..., ge=0, le=4)
+    clears_hurdle_smoothly: int = 0
+    toe_drag: int = 0
+    hip_flexion_restriction: int = 0
+    asymmetrical_movement: int = 0
 
 class HurdleStepData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    l_score: int = 0  # Added for DB
+    r_score: int = 0  # Added for DB
     pelvis_core_control: HS_PelvisCoreControl
     stance_leg: HS_StanceLeg
     stepping_leg: HS_SteppingLeg
 
+# --- 3. INLINE LUNGE ---
 class IL_Alignment(BaseModel):
-    head_neutral: int = Field(..., ge=0, le=4)
-    forward_head: int = Field(..., ge=0, le=4)
-    trunk_upright: int = Field(..., ge=0, le=4)
-    excessive_forward_lean: int = Field(..., ge=0, le=4)
-    lateral_shift: int = Field(..., ge=0, le=4)
+    head_neutral: int = 0
+    forward_head: int = 0
+    trunk_upright: int = 0
+    excessive_forward_lean: int = 0
+    lateral_shift: int = 0
 
 class IL_LowerBodyControl(BaseModel):
-    knee_tracks_over_foot: int = Field(..., ge=0, le=4)
-    knee_valgus: int = Field(..., ge=0, le=4)
-    knee_instability: int = Field(..., ge=0, le=4)
-    heel_lift: int = Field(..., ge=0, le=4)
+    knee_tracks_over_foot: int = 0
+    knee_valgus: int = 0
+    knee_instability: int = 0
+    heel_lift: int = 0
 
 class IL_BalanceStability(BaseModel):
-    stable_throughout: int = Field(..., ge=0, le=4)
-    wobbling: int = Field(..., ge=0, le=4)
-    loss_of_balance: int = Field(..., ge=0, le=4)
-    unequal_weight_distribution: int = Field(..., ge=0, le=4)
+    stable_throughout: int = 0
+    wobbling: int = 0
+    loss_of_balance: int = 0
+    unequal_weight_distribution: int = 0
 
 class InlineLungeData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    l_score: int = 0
+    r_score: int = 0
     alignment: IL_Alignment
     lower_body_control: IL_LowerBodyControl
     balance_stability: IL_BalanceStability
 
+# --- 4. SHOULDER MOBILITY ---
 class SM_ReachQuality(BaseModel):
-    hands_within_fist_distance: int = Field(..., ge=0, le=4)
-    hands_within_hand_length: int = Field(..., ge=0, le=4)
-    excessive_gap: int = Field(..., ge=0, le=4)
-    asymmetry_present: int = Field(..., ge=0, le=4)
+    hands_within_fist_distance: int = 0
+    hands_within_hand_length: int = 0
+    excessive_gap: int = 0
+    asymmetry_present: int = 0
 
 class SM_Compensation(BaseModel):
-    no_compensation: int = Field(..., ge=0, le=4)
-    spine_flexion: int = Field(..., ge=0, le=4)
-    rib_flare: int = Field(..., ge=0, le=4)
-    scapular_winging: int = Field(..., ge=0, le=4)
+    no_compensation: int = 0
+    spine_flexion: int = 0
+    rib_flare: int = 0
+    scapular_winging: int = 0
 
 class SM_Pain(BaseModel):
-    no_pain: int = Field(..., ge=0, le=4)
-    pain_reported: int = Field(..., ge=0, le=4)
+    no_pain: int = 0
+    pain_reported: int = 0
 
 class ShoulderMobilityData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    l_score: int = 0
+    r_score: int = 0
+    clearing_pain: bool = False # Added for DB
     reach_quality: SM_ReachQuality
     compensation: SM_Compensation
     pain: SM_Pain
 
+# --- 5. ASLR ---
 class ASLR_NonMovingLeg(BaseModel):
-    remains_flat: int = Field(..., ge=0, le=4)
-    knee_bends: int = Field(..., ge=0, le=4)
-    hip_externally_rotates: int = Field(..., ge=0, le=4)
-    foot_lifts_off_floor: int = Field(..., ge=0, le=4)
+    remains_flat: int = 0
+    knee_bends: int = 0
+    hip_externally_rotates: int = 0
+    foot_lifts_off_floor: int = 0
 
 class ASLR_MovingLeg(BaseModel):
-    gt_80_hip_flexion: int = Field(..., ge=0, le=4)
-    between_60_80_hip_flexion: int = Field(..., ge=0, le=4)
-    lt_60_hip_flexion: int = Field(..., ge=0, le=4)
-    hamstring_restriction: int = Field(..., ge=0, le=4)
+    gt_80_hip_flexion: int = 0
+    between_60_80_hip_flexion: int = 0
+    lt_60_hip_flexion: int = 0
+    hamstring_restriction: int = 0
 
 class ASLR_PelvicControl(BaseModel):
-    pelvis_stable: int = Field(..., ge=0, le=4)
-    anterior_tilt: int = Field(..., ge=0, le=4)
-    posterior_tilt: int = Field(..., ge=0, le=4)
+    pelvis_stable: int = 0
+    anterior_tilt: int = 0
+    posterior_tilt: int = 0
 
 class ASLRData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    l_score: int = 0
+    r_score: int = 0
     non_moving_leg: ASLR_NonMovingLeg
     moving_leg: ASLR_MovingLeg
     pelvic_control: ASLR_PelvicControl
 
+# --- 6. TRUNK STABILITY ---
 class TSP_BodyAlignment(BaseModel):
-    neutral_spine_maintained: int = Field(..., ge=0, le=4)
-    sagging_hips: int = Field(..., ge=0, le=4)
-    pike_position: int = Field(..., ge=0, le=4)
+    neutral_spine_maintained: int = 0
+    sagging_hips: int = 0
+    pike_position: int = 0
 
 class TSP_CoreControl(BaseModel):
-    initiates_as_one_unit: int = Field(..., ge=0, le=4)
-    hips_lag: int = Field(..., ge=0, le=4)
-    excessive_lumbar_extension: int = Field(..., ge=0, le=4)
+    initiates_as_one_unit: int = 0
+    hips_lag: int = 0
+    excessive_lumbar_extension: int = 0
 
 class TSP_UpperBody(BaseModel):
-    elbows_aligned: int = Field(..., ge=0, le=4)
-    uneven_arm_push: int = Field(..., ge=0, le=4)
-    shoulder_instability: int = Field(..., ge=0, le=4)
+    elbows_aligned: int = 0
+    uneven_arm_push: int = 0
+    shoulder_instability: int = 0
 
 class TSPData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    clearing_pain: bool = False
     body_alignment: TSP_BodyAlignment
     core_control: TSP_CoreControl
     upper_body: TSP_UpperBody
 
+# --- 7. ROTARY STABILITY ---
 class RS_DiagonalPattern(BaseModel):
-    smooth_controlled: int = Field(..., ge=0, le=4)
-    loss_of_balance: int = Field(..., ge=0, le=4)
-    unable_to_complete: int = Field(..., ge=0, le=4)
+    smooth_controlled: int = 0
+    loss_of_balance: int = 0
+    unable_to_complete: int = 0
 
 class RS_SpinalControl(BaseModel):
-    neutral_maintained: int = Field(..., ge=0, le=4)
-    excessive_rotation: int = Field(..., ge=0, le=4)
-    lumbar_shift: int = Field(..., ge=0, le=4)
+    neutral_maintained: int = 0
+    excessive_rotation: int = 0
+    lumbar_shift: int = 0
 
 class RS_Symmetry(BaseModel):
-    symmetrical: int = Field(..., ge=0, le=4)
-    left_side_deficit: int = Field(..., ge=0, le=4)
-    right_side_deficit: int = Field(..., ge=0, le=4)
+    symmetrical: int = 0
+    left_side_deficit: int = 0
+    right_side_deficit: int = 0
 
 class RSData(BaseModel):
-    score: int = Field(..., ge=0, le=3)
+    score: int
+    l_score: int = 0
+    r_score: int = 0
+    clearing_pain: bool = False
     diagonal_pattern: RS_DiagonalPattern
     spinal_control: RS_SpinalControl
     symmetry: RS_Symmetry
@@ -219,11 +239,16 @@ class FMSProfileRequest(BaseModel):
     rotary_stability: RSData
     use_manual_scores: bool = False
 
+# ────────────────────────────────────────────────
+# API Endpoints
+# ────────────────────────────────────────────────
+
 @app.post("/generate-workout")
 async def generate_workout(profile: FMSProfileRequest):
+    # Convert Pydantic model to dictionary
     full_data = profile.dict()
 
-    # Create simplified dictionary
+    # Create simplified scores for the RAG engine
     simple_scores = {
         "overhead_squat": full_data["overhead_squat"]["score"],
         "hurdle_step": full_data["hurdle_step"]["score"],
@@ -234,15 +259,12 @@ async def generate_workout(profile: FMSProfileRequest):
         "rotary_stability": full_data["rotary_stability"]["score"],
     }
 
-    # Cache
-    cache_key = hashlib.md5(json.dumps(full_data, sort_keys=True).encode()).hexdigest()
-    if cache_key in RESPONSE_CACHE:
-        return RESPONSE_CACHE[cache_key]
-
     # 1. ANALYZE
     try:
+        # We pass the full nested data to the analyzer
         analysis = analyze_fms_profile(full_data, use_manual_scores=full_data.get('use_manual_scores', False))
     except Exception as e:
+        print(f"Analyzer Error: {e}")
         raise HTTPException(status_code=500, detail=f"Analyzer Error: {str(e)}")
 
     if analysis.get("status") == "STOP":
@@ -253,18 +275,18 @@ async def generate_workout(profile: FMSProfileRequest):
             "difficulty_color": "Red"
         }
 
-    # 2. RETRIEVE (ASYNC UPDATE)
+    # 2. RETRIEVE (RAG)
     try:
-        # Changed to await because retriever now talks to DB
         retrieval_result = await get_exercises_by_profile(
             simple_scores=simple_scores,
-            detailed_faults=full_data
+            detailed_faults=full_data # Pass full details for better filtering
         )
         exercises = retrieval_result["data"]
     except Exception as e:
+        print(f"Retriever Error: {e}")
         raise HTTPException(status_code=500, detail=f"Retriever Error: {str(e)}")
 
-    # 3. GENERATE
+    # 3. GENERATE PLAN
     try:
         enriched_analysis = analysis.copy()
         enriched_analysis["detailed_faults"] = full_data
@@ -277,57 +299,67 @@ async def generate_workout(profile: FMSProfileRequest):
 
         final_plan["effective_scores"] = analysis.get("effective_scores", {})
 
-        # ── SAVE TO NEON DATABASE ──
-        # Uses the FMSResult imported from src.database
+        # ── 4. SAVE TO NEON DATABASE ──
         if full_data: 
             async with AsyncSessionLocal() as session:
                 new_result = AssessmentLog(
-                    # --- Map the Inputs ---
-                    deep_squat_score = full_data.get("deep_squat"),
-                    
-                    hurdle_step_l = full_data.get("hurdle_step_l"),
-                    hurdle_step_r = full_data.get("hurdle_step_r"),
-                    hurdle_step_final = full_data.get("hurdle_step_score"), # Effective score
-                    
-                    inline_lunge_l = full_data.get("inline_lunge_l"),
-                    inline_lunge_r = full_data.get("inline_lunge_r"),
-                    inline_lunge_final = full_data.get("inline_lunge_score"),
+                    # --- 1. Deep Squat ---
+                    deep_squat_score = profile.overhead_squat.score,
+                    deep_squat_details = full_data["overhead_squat"], # Saves nested JSON faults
 
-                    shoulder_mobility_l = full_data.get("shoulder_mobility_l"),
-                    shoulder_mobility_r = full_data.get("shoulder_mobility_r"),
-                    shoulder_clearing_pain = full_data.get("shoulder_clearing"),
-                    shoulder_mobility_final = full_data.get("shoulder_mobility_score"),
+                    # --- 2. Hurdle Step ---
+                    hurdle_step_l = profile.hurdle_step.l_score,
+                    hurdle_step_r = profile.hurdle_step.r_score,
+                    hurdle_step_final = profile.hurdle_step.score,
+                    hurdle_step_details = full_data["hurdle_step"],
 
-                    aslr_l = full_data.get("active_straight_leg_raise_l"),
-                    aslr_r = full_data.get("active_straight_leg_raise_r"),
-                    aslr_final = full_data.get("active_straight_leg_raise_score"),
+                    # --- 3. Inline Lunge ---
+                    inline_lunge_l = profile.inline_lunge.l_score,
+                    inline_lunge_r = profile.inline_lunge.r_score,
+                    inline_lunge_final = profile.inline_lunge.score,
+                    inline_lunge_details = full_data["inline_lunge"],
 
-                    trunk_stability_raw = full_data.get("trunk_stability_pushup"),
-                    extension_clearing_pain = full_data.get("extension_clearing"),
-                    trunk_stability_final = full_data.get("trunk_stability_score"),
+                    # --- 4. Shoulder Mobility ---
+                    shoulder_mobility_l = profile.shoulder_mobility.l_score,
+                    shoulder_mobility_r = profile.shoulder_mobility.r_score,
+                    shoulder_clearing_pain = profile.shoulder_mobility.clearing_pain,
+                    shoulder_mobility_final = profile.shoulder_mobility.score,
+                    shoulder_mobility_details = full_data["shoulder_mobility"],
 
-                    rotary_stability_l = full_data.get("rotary_stability_l"),
-                    rotary_stability_r = full_data.get("rotary_stability_r"),
-                    flexion_clearing_pain = full_data.get("flexion_clearing"),
-                    rotary_stability_final = full_data.get("rotary_stability_score"),
+                    # --- 5. ASLR ---
+                    aslr_l = profile.active_straight_leg_raise.l_score,
+                    aslr_r = profile.active_straight_leg_raise.r_score,
+                    aslr_final = profile.active_straight_leg_raise.score,
+                    aslr_details = full_data["active_straight_leg_raise"],
 
+                    # --- 6. Trunk Stability ---
+                    trunk_stability_raw = profile.trunk_stability_pushup.score, # Raw score
+                    extension_clearing_pain = profile.trunk_stability_pushup.clearing_pain,
+                    trunk_stability_final = profile.trunk_stability_pushup.score,
+                    trunk_stability_details = full_data["trunk_stability_pushup"],
+
+                    # --- 7. Rotary Stability ---
+                    rotary_stability_l = profile.rotary_stability.l_score,
+                    rotary_stability_r = profile.rotary_stability.r_score,
+                    flexion_clearing_pain = profile.rotary_stability.clearing_pain,
+                    rotary_stability_final = profile.rotary_stability.score,
+                    rotary_stability_details = full_data["rotary_stability"],
+
+                    # --- Outputs ---
                     total_fms_score = final_plan.get("effective_scores", {}).get("total_score", 0),
                     predicted_level = "Calculated", 
-
-                    # --- Map the Outputs ---
-                    analysis_summary = analysis,
-                    final_plan_json = str(final_plan) # Convert the Dict to String for storage
+                    analysis_summary = json.dumps(analysis), # Store as string
+                    final_plan_json = str(final_plan)
                 )
                 
                 session.add(new_result)
                 await session.commit()
                 print(f"DEBUG: Saved FMS result to Neon DB.")
 
-        RESPONSE_CACHE[cache_key] = final_plan
         return final_plan
 
     except Exception as e:
-        print(f"ERROR: {str(e)}")
+        print(f"System Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"System Error: {str(e)}")
 
 if __name__ == "__main__":

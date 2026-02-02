@@ -3,7 +3,7 @@ import requests
 import os
 import json
 
-# CONFIGURATION
+# ── CONFIGURATION ──
 # Defaults to localhost for testing, but respects Render/Cloud env vars
 API_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000/generate-workout")
 
@@ -11,219 +11,275 @@ API_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000/generate-workout")
 if 'use_manual_scores' not in st.session_state:
     st.session_state.use_manual_scores = False
 
-# PAGE SETUP
+# ── PAGE SETUP ──
 st.set_page_config(page_title="FMS Smart Coach", page_icon="🏋️", layout="wide")
 
-# --- HEADER ---
+# ── HEADER ──
 st.title("🏋️ AI Strength Coach: Detailed FMS Analyzer")
 st.markdown("### From Screening to Programming (With Fault Specificity)")
 st.markdown(f"**Backend Status:** Connecting to `{API_URL}`")
 st.markdown("---")
 
-# --- MAIN INPUT FORM ---
+# ── MAIN INPUT FORM ──
 with st.form("fms_input_form"):
     st.subheader("📝 Athlete Scorecard & Fault Analysis")
-    st.info("Enter the raw scores (0-3) and rate specific faults (0-4).")
+    st.info("Enter Raw Scores (0-3) for Left/Right sides where applicable. Rate specific faults (0-1) to trigger corrective logic.")
 
     # Checkbox controls override
     use_manual_scores = st.checkbox(
-        "Use manual FMS scores (override auto-calculation)",
+        "Use manual FMS final scores (override auto-calculation logic)",
         value=st.session_state.use_manual_scores,
         key="manual_override_checkbox"
     )
     st.session_state.use_manual_scores = use_manual_scores
-    default_score = 0 if not use_manual_scores else None
-    slider_disabled = not use_manual_scores
+    
+    # If manual override is OFF, we usually let backend calculate, 
+    # but here we allow user to input the final score visually.
+    slider_disabled = False 
 
-    # --- INPUT COLUMNS (Condensed for readability, logic preserved) ---
-    col1, col2 = st.columns(2)
+    # ── 1. DEEP SQUAT (Symmetrical) ──
+    with st.expander("1. Overhead Squat (Deep Squat)", expanded=True):
+        col_ds_main, col_ds_faults = st.columns([1, 3])
+        with col_ds_main:
+            ds_score = st.number_input("Final Score", 0, 3, 0, key="ds_score")
+        with col_ds_faults:
+            t1, t2, t3, t4 = st.tabs(["Trunk", "Lower Limb", "Feet", "Upper Body"])
+            with t1:
+                ds_tu = st.number_input("Upright torso", 0, 1, key="ds_tu")
+                ds_tefl = st.number_input("Excessive forward lean", 0, 1, key="ds_tefl")
+                ds_trf = st.number_input("Rib flare", 0, 1, key="ds_trf")
+                ds_tlf = st.number_input("Lumbar flexion", 0, 1, key="ds_tlf")
+                ds_tlesb = st.number_input("Lumbar extension / sway back", 0, 1, key="ds_tlesb")
+            with t2:
+                ds_lktt = st.number_input("Knees track over toes", 0, 1, key="ds_lktt")
+                ds_lkv = st.number_input("Knee valgus", 0, 1, key="ds_lkv")
+                ds_lkvar = st.number_input("Knee varus", 0, 1, key="ds_lkvar")
+                ds_lud = st.number_input("Uneven depth", 0, 1, key="ds_lud")
+            with t3:
+                ds_fhsd = st.number_input("Heels stay down", 0, 1, key="ds_fhsd")
+                ds_fhl = st.number_input("Heels lift", 0, 1, key="ds_fhl")
+                ds_fep = st.number_input("Excessive pronation", 0, 1, key="ds_fep")
+                ds_fes = st.number_input("Excessive supination", 0, 1, key="ds_fes")
+            with t4:
+                ds_uba = st.number_input("Bar aligned over mid-foot", 0, 1, key="ds_uba")
+                ds_ubdf = st.number_input("Bar drifts forward", 0, 1, key="ds_ubdf")
+                ds_uaff = st.number_input("Arms fall forward", 0, 1, key="ds_uaff")
+                ds_usr = st.number_input("Shoulder restriction", 0, 1, key="ds_usr")
 
-    with col1:
-        with st.expander("1. Overhead Squat (Deep Squat)", expanded=True):
-            ds_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="ds_score")
-            st.markdown("**Trunk & Torso**")
-            ds_trunk_upright_torso = st.number_input("Upright torso", 0, 4, 0, key="ds_tu")
-            ds_trunk_excessive_forward_lean = st.number_input("Excessive forward lean", 0, 4, 0, key="ds_tefl")
-            ds_trunk_rib_flare = st.number_input("Rib flare", 0, 4, 0, key="ds_trf")
-            ds_trunk_lumbar_flexion = st.number_input("Lumbar flexion", 0, 4, 0, key="ds_tlf")
-            ds_trunk_lumbar_extension_sway_back = st.number_input("Lumbar extension / sway back", 0, 4, 0, key="ds_tlesb")
-            st.markdown("**Lower Limb**")
-            ds_lower_knees_track_over_toes = st.number_input("Knees track over toes", 0, 4, 0, key="ds_lktt")
-            ds_lower_knee_valgus = st.number_input("Knee valgus", 0, 4, 0, key="ds_lkv")
-            ds_lower_knee_varus = st.number_input("Knee varus", 0, 4, 0, key="ds_lkvar")
-            ds_lower_uneven_depth = st.number_input("Uneven depth", 0, 4, 0, key="ds_lud")
-            st.markdown("**Feet**")
-            ds_feet_heels_stay_down = st.number_input("Heels stay down", 0, 4, 0, key="ds_fhsd")
-            ds_feet_heels_lift = st.number_input("Heels lift", 0, 4, 0, key="ds_fhl")
-            ds_feet_excessive_pronation = st.number_input("Excessive pronation", 0, 4, 0, key="ds_fep")
-            ds_feet_excessive_supination = st.number_input("Excessive supination", 0, 4, 0, key="ds_fes")
-            st.markdown("**Upper Body**")
-            ds_upper_bar_aligned = st.number_input("Bar aligned over mid-foot", 0, 4, 0, key="ds_uba")
-            ds_upper_bar_drifts = st.number_input("Bar drifts forward", 0, 4, 0, key="ds_ubdf")
-            ds_upper_arms_fall = st.number_input("Arms fall forward", 0, 4, 0, key="ds_uaff")
-            ds_upper_shoulder_rest = st.number_input("Shoulder restriction", 0, 4, 0, key="ds_usr")
+    # ── 2. HURDLE STEP (Asymmetrical) ──
+    with st.expander("2. Hurdle Step"):
+        
+        c1, c2, c3 = st.columns(3)
+        hs_l_score = c1.number_input("Left Score", 0, 3, 0, key="hs_l_score")
+        hs_r_score = c2.number_input("Right Score", 0, 3, 0, key="hs_r_score")
+        hs_score = c3.number_input("Final Score", 0, 3, min(hs_l_score, hs_r_score), key="hs_score")
+        
+        t1, t2, t3 = st.tabs(["Pelvis/Core", "Stance Leg", "Stepping Leg"])
+        with t1:
+            hs_pps = st.number_input("Pelvis stable", 0, 1, key="hs_pps")
+            hs_ppd = st.number_input("Pelvic drop", 0, 1, key="hs_ppd")
+            hs_per = st.number_input("Excessive rotation", 0, 1, key="hs_per")
+            hs_plob = st.number_input("Loss of balance", 0, 1, key="hs_plob")
+        with t2:
+            hs_sks = st.number_input("Knee stable", 0, 1, key="hs_sks")
+            hs_skv = st.number_input("Knee valgus", 0, 1, key="hs_skv")
+            hs_skvar = st.number_input("Knee varus", 0, 1, key="hs_skvar")
+            hs_sai = st.number_input("Ankle instability", 0, 1, key="hs_sai")
+        with t3:
+            hs_stc = st.number_input("Clears hurdle", 0, 1, key="hs_stc")
+            hs_sttd = st.number_input("Toe drag", 0, 1, key="hs_sttd")
+            hs_sthr = st.number_input("Hip restriction", 0, 1, key="hs_sthr")
+            hs_stam = st.number_input("Asymmetrical", 0, 1, key="hs_stam")
 
-    with col2:
-        with st.expander("2. Hurdle Step"):
-            hs_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="hs_score")
-            st.markdown("**Pelvis**")
-            hs_pelvis_stable = st.number_input("Pelvis stable", 0, 4, 0, key="hs_pps")
-            hs_pelvis_drop = st.number_input("Pelvic drop", 0, 4, 0, key="hs_ppd")
-            hs_pelvis_rot = st.number_input("Excessive rotation", 0, 4, 0, key="hs_per")
-            hs_pelvis_lob = st.number_input("Loss of balance", 0, 4, 0, key="hs_plob")
-            st.markdown("**Stance Leg**")
-            hs_stance_stable = st.number_input("Knee stable", 0, 4, 0, key="hs_sks")
-            hs_stance_valgus = st.number_input("Knee valgus", 0, 4, 0, key="hs_skv")
-            hs_stance_varus = st.number_input("Knee varus", 0, 4, 0, key="hs_skvar")
-            hs_stance_ankle = st.number_input("Ankle instability", 0, 4, 0, key="hs_sai")
-            st.markdown("**Stepping Leg**")
-            hs_step_clear = st.number_input("Clears hurdle", 0, 4, 0, key="hs_stc")
-            hs_step_toe = st.number_input("Toe drag", 0, 4, 0, key="hs_sttd")
-            hs_step_hip = st.number_input("Hip restriction", 0, 4, 0, key="hs_sthr")
-            hs_step_asym = st.number_input("Asymmetrical", 0, 4, 0, key="hs_stam")
+    # ── 3. INLINE LUNGE (Asymmetrical) ──
+    with st.expander("3. Inline Lunge"):
+        c1, c2, c3 = st.columns(3)
+        il_l_score = c1.number_input("Left Score", 0, 3, 0, key="il_l_score")
+        il_r_score = c2.number_input("Right Score", 0, 3, 0, key="il_r_score")
+        il_score = c3.number_input("Final Score", 0, 3, min(il_l_score, il_r_score), key="il_score")
 
-    col3, col4 = st.columns(2)
-    with col3:
-        with st.expander("3. Inline Lunge"):
-            il_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="il_score")
-            # Keeping inputs minimal for brevity in this display, assume full mapping exists in your local version
-            # Using defaults for the required fields to save visual space in this file, 
-            # ensure your local version has ALL fields mapped like the Squat section above.
-            il_head_neutral = st.number_input("Head neutral", 0, 4, 0, key="il_hn")
-            il_fwd_head = st.number_input("Forward head", 0, 4, 0, key="il_fh")
-            il_trunk_up = st.number_input("Trunk upright", 0, 4, 0, key="il_tu")
-            il_fwd_lean = st.number_input("Excessive lean", 0, 4, 0, key="il_fl")
-            il_lat_shift = st.number_input("Lateral shift", 0, 4, 0, key="il_ls")
-            
-            il_knee_track = st.number_input("Knee tracks", 0, 4, 0, key="il_kt")
-            il_knee_val = st.number_input("Knee valgus", 0, 4, 0, key="il_kv")
-            il_knee_inst = st.number_input("Knee instability", 0, 4, 0, key="il_ki")
-            il_heel_lift = st.number_input("Heel lift", 0, 4, 0, key="il_hl")
-            
-            il_stab = st.number_input("Stable", 0, 4, 0, key="il_st")
-            il_wobble = st.number_input("Wobbling", 0, 4, 0, key="il_wb")
-            il_lob = st.number_input("Loss of balance", 0, 4, 0, key="il_lob")
-            il_unequal = st.number_input("Unequal weight", 0, 4, 0, key="il_uw")
+        t1, t2, t3 = st.tabs(["Alignment", "Lower Body", "Balance"])
+        with t1:
+            il_hn = st.number_input("Head neutral", 0, 1, key="il_hn")
+            il_fh = st.number_input("Forward head", 0, 1, key="il_fh")
+            il_tu = st.number_input("Trunk upright", 0, 1, key="il_tu")
+            il_fl = st.number_input("Excessive lean", 0, 1, key="il_fl")
+            il_ls = st.number_input("Lateral shift", 0, 1, key="il_ls")
+        with t2:
+            il_kt = st.number_input("Knee tracks", 0, 1, key="il_kt")
+            il_kv = st.number_input("Knee valgus", 0, 1, key="il_kv")
+            il_ki = st.number_input("Knee instability", 0, 1, key="il_ki")
+            il_hl = st.number_input("Heel lift", 0, 1, key="il_hl")
+        with t3:
+            il_st = st.number_input("Stable", 0, 1, key="il_st")
+            il_wb = st.number_input("Wobbling", 0, 1, key="il_wb")
+            il_lob = st.number_input("Loss of balance", 0, 1, key="il_lob")
+            il_uw = st.number_input("Unequal weight", 0, 1, key="il_uw")
 
-    with col4:
-        with st.expander("4. Shoulder Mobility"):
-            sm_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="sm_score")
-            sm_fist = st.number_input("Fist distance", 0, 4, 0, key="sm_fd")
-            sm_hand = st.number_input("Hand length", 0, 4, 0, key="sm_hl")
-            sm_gap = st.number_input("Excessive gap", 0, 4, 0, key="sm_eg")
-            sm_asym = st.number_input("Asymmetry", 0, 4, 0, key="sm_as")
-            sm_nocomp = st.number_input("No compensation", 0, 4, 0, key="sm_nc")
-            sm_spine = st.number_input("Spine flexion", 0, 4, 0, key="sm_sf")
-            sm_rib = st.number_input("Rib flare", 0, 4, 0, key="sm_rf")
-            sm_wing = st.number_input("Scapular winging", 0, 4, 0, key="sm_sw")
-            sm_nopain = st.number_input("No pain", 0, 4, 0, key="sm_np")
-            sm_pain = st.number_input("Pain reported", 0, 4, 0, key="sm_pr")
+    # ── 4. SHOULDER MOBILITY (Asymmetrical + Pain) ──
+    with st.expander("4. Shoulder Mobility"):
+        c1, c2, c3, c4 = st.columns(4)
+        sm_l_score = c1.number_input("Left Score", 0, 3, 0, key="sm_l_score")
+        sm_r_score = c2.number_input("Right Score", 0, 3, 0, key="sm_r_score")
+        sm_clearing = c3.checkbox("Pain on Clearing?", key="sm_clearing")
+        sm_score = c4.number_input("Final Score", 0, 3, 0 if sm_clearing else min(sm_l_score, sm_r_score), key="sm_score")
 
-    col5, col6, col7 = st.columns(3)
-    with col5:
-        with st.expander("5. ASLR"):
-            aslr_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="aslr_score")
-            aslr_flat = st.number_input("Remains flat", 0, 4, 0, key="aslr_rf")
-            aslr_bend = st.number_input("Knee bends", 0, 4, 0, key="aslr_kb")
-            aslr_ext = st.number_input("Ext rotation", 0, 4, 0, key="aslr_er")
-            aslr_lift = st.number_input("Foot lifts", 0, 4, 0, key="aslr_fl")
-            aslr_gt80 = st.number_input(">80 flexion", 0, 4, 0, key="aslr_g80")
-            aslr_6080 = st.number_input("60-80 flexion", 0, 4, 0, key="aslr_6080")
-            aslr_lt60 = st.number_input("<60 flexion", 0, 4, 0, key="aslr_l60")
-            aslr_ham = st.number_input("Hamstring restrict", 0, 4, 0, key="aslr_hr")
-            aslr_pstab = st.number_input("Pelvis stable", 0, 4, 0, key="aslr_ps")
-            aslr_ant = st.number_input("Ant tilt", 0, 4, 0, key="aslr_at")
-            aslr_post = st.number_input("Post tilt", 0, 4, 0, key="aslr_pt")
+        t1, t2, t3 = st.tabs(["Reach Quality", "Compensation", "Pain Detail"])
+        with t1:
+            sm_fd = st.number_input("Fist distance", 0, 1, key="sm_fd")
+            sm_hl = st.number_input("Hand length", 0, 1, key="sm_hl")
+            sm_eg = st.number_input("Excessive gap", 0, 1, key="sm_eg")
+            sm_as = st.number_input("Asymmetry", 0, 1, key="sm_as")
+        with t2:
+            sm_nc = st.number_input("No compensation", 0, 1, key="sm_nc")
+            sm_sf = st.number_input("Spine flexion", 0, 1, key="sm_sf")
+            sm_rf = st.number_input("Rib flare", 0, 1, key="sm_rf")
+            sm_sw = st.number_input("Scapular winging", 0, 1, key="sm_sw")
+        with t3:
+            sm_np = st.number_input("No pain reported", 0, 1, key="sm_np")
+            sm_pr = st.number_input("Pain reported", 0, 1, key="sm_pr")
 
-    with col6:
-        with st.expander("6. TSPU"):
-            tsp_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="tsp_score")
-            tsp_neut = st.number_input("Neutral spine", 0, 4, 0, key="tsp_ns")
-            tsp_sag = st.number_input("Sagging hips", 0, 4, 0, key="tsp_sh")
-            tsp_pike = st.number_input("Pike", 0, 4, 0, key="tsp_pk")
-            tsp_unit = st.number_input("One unit", 0, 4, 0, key="tsp_ou")
-            tsp_lag = st.number_input("Hips lag", 0, 4, 0, key="tsp_hl")
-            tsp_ext = st.number_input("Lumbar ext", 0, 4, 0, key="tsp_le")
-            tsp_elb = st.number_input("Elbows aligned", 0, 4, 0, key="tsp_ea")
-            tsp_unev = st.number_input("Uneven push", 0, 4, 0, key="tsp_up")
-            tsp_inst = st.number_input("Shoulder instab", 0, 4, 0, key="tsp_si")
+    # ── 5. ASLR (Asymmetrical) ──
+    with st.expander("5. Active Straight Leg Raise"):
+        c1, c2, c3 = st.columns(3)
+        aslr_l_score = c1.number_input("Left Score", 0, 3, 0, key="aslr_l_score")
+        aslr_r_score = c2.number_input("Right Score", 0, 3, 0, key="aslr_r_score")
+        aslr_score = c3.number_input("Final Score", 0, 3, min(aslr_l_score, aslr_r_score), key="aslr_score")
 
-    with col7:
-        with st.expander("7. Rotary Stability"):
-            rs_score = st.slider("Score", 0, 3, default_score if default_score is not None else 0, disabled=slider_disabled, key="rs_score")
-            rs_sm = st.number_input("Smooth", 0, 4, 0, key="rs_sm")
-            rs_lob = st.number_input("Loss balance", 0, 4, 0, key="rs_lob")
-            rs_utc = st.number_input("Unable complete", 0, 4, 0, key="rs_utc")
-            rs_neut = st.number_input("Neutral maint", 0, 4, 0, key="rs_nm")
-            rs_rot = st.number_input("Excess rot", 0, 4, 0, key="rs_er")
-            rs_shift = st.number_input("Lumbar shift", 0, 4, 0, key="rs_ls")
-            rs_sym = st.number_input("Symmetrical", 0, 4, 0, key="rs_sy")
-            rs_left = st.number_input("Left deficit", 0, 4, 0, key="rs_ld")
-            rs_right = st.number_input("Right deficit", 0, 4, 0, key="rs_rd")
+        t1, t2, t3 = st.tabs(["Non-Moving Leg", "Moving Leg", "Pelvis"])
+        with t1:
+            aslr_rf = st.number_input("Remains flat", 0, 1, key="aslr_rf")
+            aslr_kb = st.number_input("Knee bends", 0, 1, key="aslr_kb")
+            aslr_er = st.number_input("Ext rotation", 0, 1, key="aslr_er")
+            aslr_fl = st.number_input("Foot lifts", 0, 1, key="aslr_fl")
+        with t2:
+            aslr_g80 = st.number_input(">80 flexion", 0, 1, key="aslr_g80")
+            aslr_6080 = st.number_input("60-80 flexion", 0, 1, key="aslr_6080")
+            aslr_l60 = st.number_input("<60 flexion", 0, 1, key="aslr_l60")
+            aslr_hr = st.number_input("Hamstring restrict", 0, 1, key="aslr_hr")
+        with t3:
+            aslr_ps = st.number_input("Pelvis stable", 0, 1, key="aslr_ps")
+            aslr_at = st.number_input("Ant tilt", 0, 1, key="aslr_at")
+            aslr_pt = st.number_input("Post tilt", 0, 1, key="aslr_pt")
+
+    # ── 6. TSPU (Symmetrical + Pain) ──
+    with st.expander("6. Trunk Stability Pushup"):
+        c1, c2 = st.columns(2)
+        ts_clearing = c1.checkbox("Pain on Extension Clearing?", key="ts_clearing")
+        tsp_score = c2.number_input("Final Score", 0, 3, 0 if ts_clearing else 0, key="tsp_score")
+
+        t1, t2, t3 = st.tabs(["Alignment", "Core Control", "Upper Body"])
+        with t1:
+            tsp_ns = st.number_input("Neutral spine", 0, 1, key="tsp_ns")
+            tsp_sh = st.number_input("Sagging hips", 0, 1, key="tsp_sh")
+            tsp_pk = st.number_input("Pike", 0, 1, key="tsp_pk")
+        with t2:
+            tsp_ou = st.number_input("One unit", 0, 1, key="tsp_ou")
+            tsp_hl = st.number_input("Hips lag", 0, 1, key="tsp_hl")
+            tsp_le = st.number_input("Lumbar ext", 0, 1, key="tsp_le")
+        with t3:
+            tsp_ea = st.number_input("Elbows aligned", 0, 1, key="tsp_ea")
+            tsp_up = st.number_input("Uneven push", 0, 1, key="tsp_up")
+            tsp_si = st.number_input("Shoulder instab", 0, 1, key="tsp_si")
+
+    # ── 7. ROTARY STABILITY (Asymmetrical + Pain) ──
+    with st.expander("7. Rotary Stability"):
+        c1, c2, c3, c4 = st.columns(4)
+        rs_l_score = c1.number_input("Left Score", 0, 3, 0, key="rs_l_score")
+        rs_r_score = c2.number_input("Right Score", 0, 3, 0, key="rs_r_score")
+        rs_clearing = c3.checkbox("Pain on Flexion Clearing?", key="rs_clearing")
+        rs_score = c4.number_input("Final Score", 0, 3, 0 if rs_clearing else min(rs_l_score, rs_r_score), key="rs_score")
+
+        t1, t2, t3 = st.tabs(["Pattern", "Spinal Control", "Symmetry"])
+        with t1:
+            rs_sm = st.number_input("Smooth", 0, 1, key="rs_sm")
+            rs_lob = st.number_input("Loss balance", 0, 1, key="rs_lob")
+            rs_utc = st.number_input("Unable complete", 0, 1, key="rs_utc")
+        with t2:
+            rs_nm = st.number_input("Neutral maint", 0, 1, key="rs_nm")
+            rs_er = st.number_input("Excess rot", 0, 1, key="rs_er")
+            rs_ls = st.number_input("Lumbar shift", 0, 1, key="rs_ls")
+        with t3:
+            rs_sy = st.number_input("Symmetrical", 0, 1, key="rs_sy")
+            rs_ld = st.number_input("Left deficit", 0, 1, key="rs_ld")
+            rs_rd = st.number_input("Right deficit", 0, 1, key="rs_rd")
 
     st.markdown("---")
     submit_btn = st.form_submit_button("🚀 Generate Workout Plan", type="primary", use_container_width=True)
 
-# --- RESULTS ---
+# ── SUBMISSION LOGIC ──
 if submit_btn:
-    # 1. Build Payload
+    # 1. Build Payload (Matching Backend Pydantic Models Exactly)
     payload = {
+        "use_manual_scores": use_manual_scores,
         "overhead_squat": {
-            "score": ds_score,
-            "trunk_torso": {"upright_torso": ds_trunk_upright_torso, "excessive_forward_lean": ds_trunk_excessive_forward_lean, "rib_flare": ds_trunk_rib_flare, "lumbar_flexion": ds_trunk_lumbar_flexion, "lumbar_extension_sway_back": ds_trunk_lumbar_extension_sway_back},
-            "lower_limb": {"knees_track_over_toes": ds_lower_knees_track_over_toes, "knee_valgus": ds_lower_knee_valgus, "knee_varus": ds_lower_knee_varus, "uneven_depth": ds_lower_uneven_depth},
-            "feet": {"heels_stay_down": ds_feet_heels_stay_down, "heels_lift": ds_feet_heels_lift, "excessive_pronation": ds_feet_excessive_pronation, "excessive_supination": ds_feet_excessive_supination},
-            "upper_body_bar_position": {"bar_aligned_over_mid_foot": ds_upper_bar_aligned, "bar_drifts_forward": ds_upper_bar_drifts, "arms_fall_forward": ds_upper_arms_fall, "shoulder_mobility_restriction_suspected": ds_upper_shoulder_rest}
+            "score": int(ds_score),
+            "trunk_torso": {"upright_torso": int(ds_tu), "excessive_forward_lean": int(ds_tefl), "rib_flare": int(ds_trf), "lumbar_flexion": int(ds_tlf), "lumbar_extension_sway_back": int(ds_tlesb)},
+            "lower_limb": {"knees_track_over_toes": int(ds_lktt), "knee_valgus": int(ds_lkv), "knee_varus": int(ds_lkvar), "uneven_depth": int(ds_lud)},
+            "feet": {"heels_stay_down": int(ds_fhsd), "heels_lift": int(ds_fhl), "excessive_pronation": int(ds_fep), "excessive_supination": int(ds_fes)},
+            "upper_body_bar_position": {"bar_aligned_over_mid_foot": int(ds_uba), "bar_drifts_forward": int(ds_ubdf), "arms_fall_forward": int(ds_uaff), "shoulder_mobility_restriction_suspected": int(ds_usr)}
         },
         "hurdle_step": {
-            "score": hs_score,
-            "pelvis_core_control": {"pelvis_stable": hs_pelvis_stable, "pelvic_drop_trendelenburg": hs_pelvis_drop, "excessive_rotation": hs_pelvis_rot, "loss_of_balance": hs_pelvis_lob},
-            "stance_leg": {"knee_stable": hs_stance_stable, "knee_valgus": hs_stance_valgus, "knee_varus": hs_stance_varus, "ankle_instability": hs_stance_ankle},
-            "stepping_leg": {"clears_hurdle_smoothly": hs_step_clear, "toe_drag": hs_step_toe, "hip_flexion_restriction": hs_step_hip, "asymmetrical_movement": hs_step_asym}
+            "score": int(hs_score),
+            "l_score": int(hs_l_score), 
+            "r_score": int(hs_r_score),
+            "pelvis_core_control": {"pelvis_stable": int(hs_pps), "pelvic_drop_trendelenburg": int(hs_ppd), "excessive_rotation": int(hs_per), "loss_of_balance": int(hs_plob)},
+            "stance_leg": {"knee_stable": int(hs_sks), "knee_valgus": int(hs_skv), "knee_varus": int(hs_skvar), "ankle_instability": int(hs_sai)},
+            "stepping_leg": {"clears_hurdle_smoothly": int(hs_stc), "toe_drag": int(hs_sttd), "hip_flexion_restriction": int(hs_sthr), "asymmetrical_movement": int(hs_stam)}
         },
         "inline_lunge": {
-            "score": il_score,
-            "alignment": {"head_neutral": il_head_neutral, "forward_head": il_fwd_head, "trunk_upright": il_trunk_up, "excessive_forward_lean": il_fwd_lean, "lateral_shift": il_lat_shift},
-            "lower_body_control": {"knee_tracks_over_foot": il_knee_track, "knee_valgus": il_knee_val, "knee_instability": il_knee_inst, "heel_lift": il_heel_lift},
-            "balance_stability": {"stable_throughout": il_stab, "wobbling": il_wobble, "loss_of_balance": il_lob, "unequal_weight_distribution": il_unequal}
+            "score": int(il_score),
+            "l_score": int(il_l_score),
+            "r_score": int(il_r_score),
+            "alignment": {"head_neutral": int(il_hn), "forward_head": int(il_fh), "trunk_upright": int(il_tu), "excessive_forward_lean": int(il_fl), "lateral_shift": int(il_ls)},
+            "lower_body_control": {"knee_tracks_over_foot": int(il_kt), "knee_valgus": int(il_kv), "knee_instability": int(il_ki), "heel_lift": int(il_hl)},
+            "balance_stability": {"stable_throughout": int(il_st), "wobbling": int(il_wb), "loss_of_balance": int(il_lob), "unequal_weight_distribution": int(il_uw)}
         },
         "shoulder_mobility": {
-            "score": sm_score,
-            "reach_quality": {"hands_within_fist_distance": sm_fist, "hands_within_hand_length": sm_hand, "excessive_gap": sm_gap, "asymmetry_present": sm_asym},
-            "compensation": {"no_compensation": sm_nocomp, "spine_flexion": sm_spine, "rib_flare": sm_rib, "scapular_winging": sm_wing},
-            "pain": {"no_pain": sm_nopain, "pain_reported": sm_pain}
+            "score": int(sm_score),
+            "l_score": int(sm_l_score),
+            "r_score": int(sm_r_score),
+            "clearing_pain": bool(sm_clearing),
+            "reach_quality": {"hands_within_fist_distance": int(sm_fd), "hands_within_hand_length": int(sm_hl), "excessive_gap": int(sm_eg), "asymmetry_present": int(sm_as)},
+            "compensation": {"no_compensation": int(sm_nc), "spine_flexion": int(sm_sf), "rib_flare": int(sm_rf), "scapular_winging": int(sm_sw)},
+            "pain": {"no_pain": int(sm_np), "pain_reported": int(sm_pr)}
         },
         "active_straight_leg_raise": {
-            "score": aslr_score,
-            "non_moving_leg": {"remains_flat": aslr_flat, "knee_bends": aslr_bend, "hip_externally_rotates": aslr_ext, "foot_lifts_off_floor": aslr_lift},
-            "moving_leg": {"gt_80_hip_flexion": aslr_gt80, "between_60_80_hip_flexion": aslr_6080, "lt_60_hip_flexion": aslr_lt60, "hamstring_restriction": aslr_ham},
-            "pelvic_control": {"pelvis_stable": aslr_pstab, "anterior_tilt": aslr_ant, "posterior_tilt": aslr_post}
+            "score": int(aslr_score),
+            "l_score": int(aslr_l_score),
+            "r_score": int(aslr_r_score),
+            "non_moving_leg": {"remains_flat": int(aslr_rf), "knee_bends": int(aslr_kb), "hip_externally_rotates": int(aslr_er), "foot_lifts_off_floor": int(aslr_fl)},
+            "moving_leg": {"gt_80_hip_flexion": int(aslr_g80), "between_60_80_hip_flexion": int(aslr_6080), "lt_60_hip_flexion": int(aslr_l60), "hamstring_restriction": int(aslr_hr)},
+            "pelvic_control": {"pelvis_stable": int(aslr_ps), "anterior_tilt": int(aslr_at), "posterior_tilt": int(aslr_pt)}
         },
         "trunk_stability_pushup": {
-            "score": tsp_score,
-            "body_alignment": {"neutral_spine_maintained": tsp_neut, "sagging_hips": tsp_sag, "pike_position": tsp_pike},
-            "core_control": {"initiates_as_one_unit": tsp_unit, "hips_lag": tsp_lag, "excessive_lumbar_extension": tsp_ext},
-            "upper_body": {"elbows_aligned": tsp_elb, "uneven_arm_push": tsp_unev, "shoulder_instability": tsp_inst}
+            "score": int(tsp_score),
+            "clearing_pain": bool(ts_clearing),
+            "body_alignment": {"neutral_spine_maintained": int(tsp_ns), "sagging_hips": int(tsp_sh), "pike_position": int(tsp_pk)},
+            "core_control": {"initiates_as_one_unit": int(tsp_ou), "hips_lag": int(tsp_hl), "excessive_lumbar_extension": int(tsp_le)},
+            "upper_body": {"elbows_aligned": int(tsp_ea), "uneven_arm_push": int(tsp_up), "shoulder_instability": int(tsp_si)}
         },
         "rotary_stability": {
-            "score": rs_score,
-            "diagonal_pattern": {"smooth_controlled": rs_sm, "loss_of_balance": rs_lob, "unable_to_complete": rs_utc},
-            "spinal_control": {"neutral_maintained": rs_neut, "excessive_rotation": rs_rot, "lumbar_shift": rs_shift},
-            "symmetry": {"symmetrical": rs_sym, "left_side_deficit": rs_left, "right_side_deficit": rs_right}
-        },
-        "use_manual_scores": use_manual_scores
+            "score": int(rs_score),
+            "l_score": int(rs_l_score),
+            "r_score": int(rs_r_score),
+            "clearing_pain": bool(rs_clearing),
+            "diagonal_pattern": {"smooth_controlled": int(rs_sm), "loss_of_balance": int(rs_lob), "unable_to_complete": int(rs_utc)},
+            "spinal_control": {"neutral_maintained": int(rs_nm), "excessive_rotation": int(rs_er), "lumbar_shift": int(rs_ls)},
+            "symmetry": {"symmetrical": int(rs_sy), "left_side_deficit": int(rs_ld), "right_side_deficit": int(rs_rd)}
+        }
     }
 
     # 2. Call API
     with st.spinner("🤖 AI Coach is analyzing faults and querying NeonDB..."):
         try:
-            response = requests.post(API_URL, json=payload, timeout=15)
+            response = requests.post(API_URL, json=payload, timeout=20)
             
             if response.status_code == 200:
                 data = response.json()
 
                 if data.get('status') == "STOP":
-                    st.error(data.get('reason', "Pain detected."))
+                    st.error(f"🛑 MEDICAL REFERRAL REQUIRED: {data.get('reason', 'Pain detected.')}")
                 
                 # --- RESULTS DISPLAY ---
                 color_map = {"Green": "green", "Yellow": "orange", "Red": "red"}
@@ -232,27 +288,17 @@ if submit_btn:
                 st.subheader(f"🎯 Target Session: :{ui_color}[{data.get('session_title', 'Workout')}]")
                 st.info(f"**Coach's Logic:** {data.get('coach_summary', '')}")
                 
+                # --- RENDER EXERCISES ---
                 st.markdown("### 📋 Prescribed Exercises")
-                
                 if data.get('exercises'):
                     grid = st.columns(3)
                     for i, exercise in enumerate(data['exercises']):
                         with grid[i % 3]:
-                            # SAFE TAG HANDLING: Join list to string
                             tags = exercise.get('tags', [])
                             tag_str = ", ".join(tags) if isinstance(tags, list) else str(tags)
                             
                             st.markdown(f"""
-                            <div style="
-                                padding: 20px;
-                                border: 1px solid #444;
-                                border-radius: 12px;
-                                background-color: #262730;
-                                height: 100%;
-                                display: flex;
-                                flexDirection: column;
-                                justifyContent: space-between;
-                            ">
+                            <div style="padding: 20px; border: 1px solid #444; border-radius: 12px; background-color: #262730; height: 100%; display: flex; flexDirection: column; justifyContent: space-between;">
                                 <div>
                                     <h4 style="color: #FF4B4B; margin-top: 0;">{exercise.get('name', 'Exercise')}</h4>
                                     <span style="background: #333; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">{tag_str.upper()}</span>
