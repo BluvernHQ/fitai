@@ -1,6 +1,7 @@
 import json
 import asyncio
 import os
+import requests
 from typing import List, Dict
 import asyncpg
 from deepeval import evaluate
