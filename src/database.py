@@ -1,104 +1,72 @@
 import os
-from dotenv import load_dotenv
+import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, JSON
-from datetime import datetime
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy.sql import func
+from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# --- CONNECTION SETUP ---
+DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
-    # Fallback for Streamlit Cloud if .env isn't found (it uses secrets)
-    import streamlit as st
-    try:
-        DATABASE_URL = st.secrets["DATABASE_URL"]
-    except:
-        pass
+    raise ValueError("DATABASE_URL is not set in .env file")
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set. Check .env or Streamlit Secrets.")
+# Ensure we use the async driver for PostgreSQL
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Ensure async driver
-if "asyncpg" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
-# Create Engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    connect_args={"ssl": "require"}
-)
-
+engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
-# --- TABLES ---
+# --- MODELS ---
 
-class Exercise(Base):
-    __tablename__ = "exercises"
+class User(Base):
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    corrective_category = Column(String)
-    fms_profile = Column(String)
-    description = Column(Text)
-    video_url = Column(String, nullable=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-class AssessmentLog(Base):
-    __tablename__ = "assessment_logs"
+# TABLE 1: RAW SUB-INPUTS
+# This table strictly stores "What the user entered"
+class AssessmentInput(Base):
+    __tablename__ = "assessment_inputs"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Stores the full nested dictionary of checkboxes (e.g., {"overhead_squat": {"heels_lift": true...}})
+    raw_json_data = Column(JSON) 
+
+    # Relationship to link to the scores
+    scores = relationship("AssessmentScore", back_populates="input_data", uselist=False)
+
+
+# TABLE 2: MAIN FMS SCORES
+# This table strictly stores "What the system calculated"
+class AssessmentScore(Base):
+    __tablename__ = "assessment_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
     
-    # 1. Deep Squat
-    deep_squat_score = Column(Integer)
-    deep_squat_details = Column(JSON) # Stores all sub-inputs like "heels_lift"
+    # Foreign Key: This links the score back to the specific raw inputs in Table 1
+    input_id = Column(Integer, ForeignKey("assessment_inputs.id"))
+    
+    # The 7 Calculated Scores (0-3)
+    overhead_squat = Column(Integer)
+    hurdle_step = Column(Integer)
+    inline_lunge = Column(Integer)
+    shoulder_mobility = Column(Integer)
+    active_straight_leg_raise = Column(Integer)
+    trunk_stability_pushup = Column(Integer)
+    rotary_stability = Column(Integer)
+    
+    total_score = Column(Integer)
 
-    # 2. Hurdle Step
-    hurdle_step_l = Column(Integer)
-    hurdle_step_r = Column(Integer)
-    hurdle_step_final = Column(Integer)
-    hurdle_step_details = Column(JSON)
+    # Relationship
+    input_data = relationship("AssessmentInput", back_populates="scores")
 
-    # 3. Inline Lunge
-    inline_lunge_l = Column(Integer)
-    inline_lunge_r = Column(Integer)
-    inline_lunge_final = Column(Integer)
-    inline_lunge_details = Column(JSON)
-
-    # 4. Shoulder Mobility
-    shoulder_mobility_l = Column(Integer)
-    shoulder_mobility_r = Column(Integer)
-    shoulder_clearing_pain = Column(Boolean)
-    shoulder_mobility_final = Column(Integer)
-    shoulder_mobility_details = Column(JSON)
-
-    # 5. ASLR
-    aslr_l = Column(Integer)
-    aslr_r = Column(Integer)
-    aslr_final = Column(Integer)
-    aslr_details = Column(JSON)
-
-    # 6. Trunk Stability
-    trunk_stability_raw = Column(Integer)
-    extension_clearing_pain = Column(Boolean)
-    trunk_stability_final = Column(Integer)
-    trunk_stability_details = Column(JSON)
-
-    # 7. Rotary Stability
-    rotary_stability_l = Column(Integer)
-    rotary_stability_r = Column(Integer)
-    flexion_clearing_pain = Column(Boolean)
-    rotary_stability_final = Column(Integer)
-    rotary_stability_details = Column(JSON)
-
-    # Outputs
-    total_fms_score = Column(Integer)
-    predicted_level = Column(String)
-    analysis_summary = Column(Text)
-    final_plan_json = Column(Text)
-
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)

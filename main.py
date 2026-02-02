@@ -1,19 +1,20 @@
 import json
-import hashlib
 import uvicorn
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, Any, Optional
 
 # ── IMPORTS ──
-# Ensure these files exist in your src folder
 from src.logic.fms_analyzer import analyze_fms_profile
 from src.rag.retriever import get_exercises_by_profile
 from src.rag.generator import generate_workout_plan
-from src.database import init_db, AsyncSessionLocal, AssessmentLog
+
+# Import the NEW database models
+from src.database import AsyncSessionLocal, AssessmentInput, AssessmentScore, engine, Base
 
 # ────────────────────────────────────────────────
 # Lifecycle (Startup)
@@ -21,8 +22,10 @@ from src.database import init_db, AsyncSessionLocal, AssessmentLog
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🚀 Starting up: Connecting to NeonDB...")
-    await init_db()  # Create tables if they don't exist
-    print("✅ Neon DB Connection Verified.")
+    # Ensure tables exist (Safe to run; won't delete data, only creates missing tables)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("✅ Neon DB Connection Verified & Tables Ready.")
     yield
 
 app = FastAPI(title="FMS Smart Coach API", version="3.3", lifespan=lifespan)
@@ -35,10 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-RESPONSE_CACHE = {}
-
 # ────────────────────────────────────────────────
-# Pydantic Models (Updated for L/R & Database)
+# Pydantic Models (Input Validation)
 # ────────────────────────────────────────────────
 
 # --- 1. DEEP SQUAT ---
@@ -95,8 +96,8 @@ class HS_SteppingLeg(BaseModel):
 
 class HurdleStepData(BaseModel):
     score: int
-    l_score: int = 0  # Added for DB
-    r_score: int = 0  # Added for DB
+    l_score: int = 0
+    r_score: int = 0
     pelvis_core_control: HS_PelvisCoreControl
     stance_leg: HS_StanceLeg
     stepping_leg: HS_SteppingLeg
@@ -150,7 +151,7 @@ class ShoulderMobilityData(BaseModel):
     score: int
     l_score: int = 0
     r_score: int = 0
-    clearing_pain: bool = False # Added for DB
+    clearing_pain: bool = False
     reach_quality: SM_ReachQuality
     compensation: SM_Compensation
     pain: SM_Pain
@@ -243,30 +244,83 @@ class FMSProfileRequest(BaseModel):
 # API Endpoints
 # ────────────────────────────────────────────────
 
-@app.post("/generate-workout")
-async def generate_workout(profile: FMSProfileRequest):
-    # Convert Pydantic model to dictionary
+# Database Dependency
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+
+@app.post("/submit-assessment")
+async def submit_assessment(
+    profile: FMSProfileRequest, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    1. Receives Sub-Inputs (nested JSON).
+    2. Calculates Final Scores via Analyzer.
+    3. Saves Raw Inputs -> Table 1 (assessment_inputs).
+    4. Saves Main Scores -> Table 2 (assessment_scores).
+    5. Generates Workout Plan.
+    """
+    
+    # Convert Pydantic model to pure dictionary for JSON storage
     full_data = profile.dict()
 
-    # Create simplified scores for the RAG engine
-    simple_scores = {
-        "overhead_squat": full_data["overhead_squat"]["score"],
-        "hurdle_step": full_data["hurdle_step"]["score"],
-        "inline_lunge": full_data["inline_lunge"]["score"],
-        "shoulder_mobility": full_data["shoulder_mobility"]["score"],
-        "active_straight_leg_raise": full_data["active_straight_leg_raise"]["score"],
-        "trunk_stability_pushup": full_data["trunk_stability_pushup"]["score"],
-        "rotary_stability": full_data["rotary_stability"]["score"],
-    }
-
-    # 1. ANALYZE
+    # ─────────────────────────────────────────────────
+    # 1. ANALYZE (Calculate Scores)
+    # ─────────────────────────────────────────────────
     try:
-        # We pass the full nested data to the analyzer
+        # The analyzer reads the sub-inputs and returns specific scores
         analysis = analyze_fms_profile(full_data, use_manual_scores=full_data.get('use_manual_scores', False))
     except Exception as e:
         print(f"Analyzer Error: {e}")
         raise HTTPException(status_code=500, detail=f"Analyzer Error: {str(e)}")
 
+    # Extract the calculated scores
+    effective_scores = analysis.get("effective_scores", {})
+    total_score = analysis.get("total_score", 0)
+
+    # ─────────────────────────────────────────────────
+    # 2. SAVE TO DATABASE (Multi-Table)
+    # ─────────────────────────────────────────────────
+    # 
+    try:
+        # A. TABLE 1: RAW SUB-INPUTS
+        # Stores the massive nested dictionary exactly as the user sent it
+        input_entry = AssessmentInput(
+            user_id=1,  # Hardcoded for now, implement Auth later
+            raw_json_data=full_data
+        )
+        db.add(input_entry)
+        await db.flush()  # Generates input_entry.id without commiting yet
+
+        # B. TABLE 2: MAIN SCORES
+        # Stores the clean 0-3 integers, linked to the raw inputs
+        score_entry = AssessmentScore(
+            input_id=input_entry.id, # LINKING HERE
+            overhead_squat=effective_scores.get('overhead_squat', 0),
+            hurdle_step=effective_scores.get('hurdle_step', 0),
+            inline_lunge=effective_scores.get('inline_lunge', 0),
+            shoulder_mobility=effective_scores.get('shoulder_mobility', 0),
+            active_straight_leg_raise=effective_scores.get('active_straight_leg_raise', 0),
+            trunk_stability_pushup=effective_scores.get('trunk_stability_pushup', 0),
+            rotary_stability=effective_scores.get('rotary_stability', 0),
+            total_score=total_score
+        )
+        db.add(score_entry)
+        
+        await db.commit()
+        print(f"✅ DB Success: Inputs (ID {input_entry.id}) and Scores saved.")
+
+    except Exception as e:
+        await db.rollback()
+        print(f"❌ Database Error: {str(e)}")
+        # Continue to generate workout even if DB fails, but log it
+
+    # ─────────────────────────────────────────────────
+    # 3. RETRIEVE & GENERATE WORKOUT
+    # ─────────────────────────────────────────────────
+    
+    # Handle Stop Logic
     if analysis.get("status") == "STOP":
         return {
             "session_title": "Medical Referral Required",
@@ -275,92 +329,26 @@ async def generate_workout(profile: FMSProfileRequest):
             "difficulty_color": "Red"
         }
 
-    # 2. RETRIEVE (RAG)
     try:
+        # Get exercises from JSON/DB Knowledge Base
         retrieval_result = await get_exercises_by_profile(
-            simple_scores=simple_scores,
-            detailed_faults=full_data # Pass full details for better filtering
+            simple_scores=effective_scores,
+            detailed_faults=full_data
         )
-        exercises = retrieval_result["data"]
-    except Exception as e:
-        print(f"Retriever Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Retriever Error: {str(e)}")
-
-    # 3. GENERATE PLAN
-    try:
-        enriched_analysis = analysis.copy()
-        enriched_analysis["detailed_faults"] = full_data
+        exercises = retrieval_result.get("data", [])
         
-        final_plan = generate_workout_plan(enriched_analysis, exercises)
+        # Generate the Plan via LLM
+        final_plan = generate_workout_plan(analysis, exercises)
         
-        level = analysis.get("target_level", 1)
-        if final_plan.get("difficulty_color") != "Red":
-            final_plan["difficulty_color"] = "Red" if level <= 3 else "Yellow" if level <= 6 else "Green"
-
-        final_plan["effective_scores"] = analysis.get("effective_scores", {})
-
-        # ── 4. SAVE TO NEON DATABASE ──
-        if full_data: 
-            async with AsyncSessionLocal() as session:
-                new_result = AssessmentLog(
-                    # --- 1. Deep Squat ---
-                    deep_squat_score = profile.overhead_squat.score,
-                    deep_squat_details = full_data["overhead_squat"], # Saves nested JSON faults
-
-                    # --- 2. Hurdle Step ---
-                    hurdle_step_l = profile.hurdle_step.l_score,
-                    hurdle_step_r = profile.hurdle_step.r_score,
-                    hurdle_step_final = profile.hurdle_step.score,
-                    hurdle_step_details = full_data["hurdle_step"],
-
-                    # --- 3. Inline Lunge ---
-                    inline_lunge_l = profile.inline_lunge.l_score,
-                    inline_lunge_r = profile.inline_lunge.r_score,
-                    inline_lunge_final = profile.inline_lunge.score,
-                    inline_lunge_details = full_data["inline_lunge"],
-
-                    # --- 4. Shoulder Mobility ---
-                    shoulder_mobility_l = profile.shoulder_mobility.l_score,
-                    shoulder_mobility_r = profile.shoulder_mobility.r_score,
-                    shoulder_clearing_pain = profile.shoulder_mobility.clearing_pain,
-                    shoulder_mobility_final = profile.shoulder_mobility.score,
-                    shoulder_mobility_details = full_data["shoulder_mobility"],
-
-                    # --- 5. ASLR ---
-                    aslr_l = profile.active_straight_leg_raise.l_score,
-                    aslr_r = profile.active_straight_leg_raise.r_score,
-                    aslr_final = profile.active_straight_leg_raise.score,
-                    aslr_details = full_data["active_straight_leg_raise"],
-
-                    # --- 6. Trunk Stability ---
-                    trunk_stability_raw = profile.trunk_stability_pushup.score, # Raw score
-                    extension_clearing_pain = profile.trunk_stability_pushup.clearing_pain,
-                    trunk_stability_final = profile.trunk_stability_pushup.score,
-                    trunk_stability_details = full_data["trunk_stability_pushup"],
-
-                    # --- 7. Rotary Stability ---
-                    rotary_stability_l = profile.rotary_stability.l_score,
-                    rotary_stability_r = profile.rotary_stability.r_score,
-                    flexion_clearing_pain = profile.rotary_stability.clearing_pain,
-                    rotary_stability_final = profile.rotary_stability.score,
-                    rotary_stability_details = full_data["rotary_stability"],
-
-                    # --- Outputs ---
-                    total_fms_score = final_plan.get("effective_scores", {}).get("total_score", 0),
-                    predicted_level = "Calculated", 
-                    analysis_summary = json.dumps(analysis), # Store as string
-                    final_plan_json = str(final_plan)
-                )
-                
-                session.add(new_result)
-                await session.commit()
-                print(f"DEBUG: Saved FMS result to Neon DB.")
+        # Add metadata to response
+        final_plan["assessment_id"] = input_entry.id
+        final_plan["calculated_scores"] = effective_scores
 
         return final_plan
 
     except Exception as e:
-        print(f"System Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"System Error: {str(e)}")
+        print(f"Generation Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation Error: {str(e)}")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
