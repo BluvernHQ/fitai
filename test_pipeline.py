@@ -19,7 +19,8 @@ MAX_PROFILES_TO_TEST = 5  # safety limit after skipping
 # Fetch real profiles — skipping the first N newest
 # ────────────────────────────────────────────────
 async def fetch_real_profiles(skip: int = SKIP_FIRST_N, limit: int = MAX_PROFILES_TO_TEST) -> List[Dict]:
-    conn = await asyncpg.connect(DATABASE_URL)
+    clean_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    conn = await asyncpg.connect(clean_url)
     try:
         # Skip the newest skip records, then take the next limit records
         rows = await conn.fetch("""
