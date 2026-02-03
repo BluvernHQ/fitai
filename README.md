@@ -33,10 +33,12 @@ Uses **Retrieval-Augmented Generation (RAG)** with a custom exercise knowledge b
 ├── init_db.py                                # One-time script to create database tables
 ├── main.py                                   # FastAPI backend
 ├── frontend_demo.py                          # Streamlit UI
-├── .env                                      # Secrets (DATABASE_URL, GROQ_API_KEY)
+├── .env                                      # Secrets (DATABASE_URL, GROQ_API_KEY, CONFIDENT_API_KEY)
 ├── requirements.txt
 └── README.md
-text### init_db.py – Database Initialization
+text### 
+
+init_db.py – Database Initialization
 
 This small script creates all necessary tables in your PostgreSQL database the first time you run the project.
 
