@@ -28,13 +28,15 @@ The system follows a specific clinical logic combined with Generative AI:
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, FastAPI, SQLAlchemy (AsyncPG)
-- **Database:** PostgreSQL (Neon)
-- **AI/LLM:** Groq (Llama 3.3 70B Versatile)
-- **RAG:** Custom JSON Knowledge Base, Tag-based Retrieval
-- **Frontend:** Streamlit
-- **Evaluation:** DeepEval + Custom Groq Judge
-- **Ingestion:** Pandas + Openpyxl (Excel → JSON)
+| Layer               | Technology                            | Purpose                                      |
+|---------------------|---------------------------------------|----------------------------------------------|
+| Backend             | FastAPI                               | High-performance REST API                    |
+| Database            | PostgreSQL (Neon) + SQLAlchemy async  | Store user profiles & generated plans        |
+| LLM                 | Groq – Llama 3.3 70B Versatile        | Workout plan generation & coach tips         |
+| RAG / Retrieval     | Custom JSON knowledge base + tags     | Exercise recommendation                      |
+| Frontend            | Streamlit                             | Interactive fault input & result display     |
+| Evaluation          | DeepEval + custom Groq judge          | Quality & correctness assessment             |
+| Data Ingestion      | Pandas + Openpyxl                     | Excel → JSON knowledge base conversion       |
 
 ---
 
