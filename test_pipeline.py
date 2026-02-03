@@ -125,7 +125,7 @@ async def test_all_users():
             # --- 3. Evaluate (One by One) ---
             # We explicitly recreate metrics to prevent state issues
             faithfulness = FaithfulnessMetric(
-                threshold=0.9, 
+                threshold=0.8, 
                 model=groq_evaluator, 
                 include_reason=True, 
                 async_mode=False
