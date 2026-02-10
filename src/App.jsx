@@ -1,64 +1,85 @@
-import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { MOVEMENTS } from "./data/mockData";
-import { generateWorkoutPlan } from "./services/api";
+import { Routes, Route, Navigate } from "react-router-dom";
+import blueLogo from "./assets/blue.svg";
 import { Navbar } from "./components/Navbar";
+import { LoginView } from "./components/LoginView";
+import { SignupView } from "./components/SignupView";
+import { StudentsDashboard } from "./components/StudentsDashboard";
+import { StudentProfile } from "./components/StudentProfile";
+import { ProgressHistory } from "./components/ProgressHistory";
+import { WorkoutDetail } from "./components/WorkoutDetail";
+import { FMSAssessment } from "./components/FMSAssessment";
 import { InputView } from "./components/InputView";
-import { ProcessingView } from "./components/ProcessingView";
-import { ResultsView } from "./components/ResultsView";
+import { WorkoutResults } from "./components/WorkoutResults";
+import { useAuth } from "./context/authContext";
 
 export default function App() {
-  const [view, setView] = useState("input"); // input | processing | results
-  const [scores, setScores] = useState(
-    MOVEMENTS.reduce((acc, m) => ({ ...acc, [m.id]: 2 }), {})
-  );
-  const [workout, setWorkout] = useState(null);
+  const { user, loading } = useAuth();
 
-  const handleScoreChange = (id, val) => {
-    setScores((prev) => ({ ...prev, [id]: val }));
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+        <div className="animate-pulse text-zinc-500 font-bold tracking-widest uppercase text-xs">
+          Loading System...
+        </div>
+      </div>
+    );
+  }
 
-  const startAnalysis = async () => {
-    setView("processing");
-
-    try {
-      const data = await generateWorkoutPlan(scores);
-      setWorkout(data);
-      setView("results");
-    } catch (error) {
-      // Error is already logged in the service
-      alert(
-        "Something went wrong. Please check your connection and try again."
-      );
-      setView("input");
-    }
-  };
-
-  const reset = () => {
-    setView("input");
-    setWorkout(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white selection:bg-lime-500/30">
+        <Routes>
+          <Route path="/" element={<LoginView />} />
+          <Route path="/signup" element={<SignupView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-lime-500/30">
       <Navbar />
 
-      <AnimatePresence mode="wait">
-        {view === "input" && (
-          <InputView
-            scores={scores}
-            onScoreChange={handleScoreChange}
-            onGenerate={startAnalysis}
+      <div className="pt-20">
+        <Routes>
+          <Route path="/coach/dashboard" element={<StudentsDashboard />} />
+
+          {/* Read Flow */}
+          <Route path="/coach/student/:id" element={<StudentProfile />} />
+          <Route
+            path="/coach/student/:id/progress"
+            element={<ProgressHistory />}
           />
-        )}
+          <Route
+            path="/coach/student/:id/workout/:assessmentId"
+            element={<WorkoutDetail />}
+          />
 
-        {view === "processing" && <ProcessingView />}
+          {/* Write Flow */}
+          <Route path="/coach/student/:id/fms" element={<FMSAssessment />} />
+          <Route path="/coach/student/:id/scores" element={<InputView />} />
+          <Route
+            path="/coach/student/:id/workout/current"
+            element={<WorkoutResults />}
+          />
 
-        {view === "results" && workout && (
-          <ResultsView workout={workout} onReset={reset} />
-        )}
-      </AnimatePresence>
+          {/* Fallback route */}
+          <Route
+            path="*"
+            element={<Navigate to="/coach/dashboard" replace />}
+          />
+        </Routes>
+
+        <footer className="w-full max-w-7xl mx-auto px-6 py-12 mt-auto">
+          <div className="flex flex-col items-center justify-center gap-4 pt-8 border-t border-white/5">
+            <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-600 uppercase">
+              Powered by
+            </span>
+            <img src={blueLogo} alt="Logo" className="h-8 opacity-80" />
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

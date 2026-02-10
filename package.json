@@ -7,14 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "firebase": "^12.8.0",
     "framer-motion": "^12.26.1",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

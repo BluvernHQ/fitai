@@ -1,0 +1,360 @@
+{
+  "version": "v1",
+  "movements": [
+    {
+      "id": "overhead_squat",
+      "label": "Overhead Squat (OHS)",
+      "sections": [
+        {
+          "id": "trunk_torso",
+          "label": "Trunk & Torso",
+          "observations": [
+            {
+              "key": "upright_torso",
+              "label": "Upright torso",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "excessive_forward_lean",
+              "label": "Excessive forward lean",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "rib_flare",
+              "label": "Rib flare",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "lumbar_flexion",
+              "label": "Lumbar flexion",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "lumbar_extension_sway_back",
+              "label": "Lumbar extension / sway back",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "lower_limb",
+          "label": "Lower Limb",
+          "observations": [
+            {
+              "key": "knees_track_over_toes",
+              "label": "Knees track over toes",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "knee_varus",
+              "label": "Knee varus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "uneven_depth",
+              "label": "Uneven depth",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "feet",
+          "label": "Feet",
+          "observations": [
+            {
+              "key": "heels_stay_down",
+              "label": "Heels stay down",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "heels_lift",
+              "label": "Heels lift",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "excessive_pronation",
+              "label": "Excessive pronation",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "excessive_supination",
+              "label": "Excessive supination",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "upper_body_bar_position",
+          "label": "Upper Body / Bar Position",
+          "observations": [
+            {
+              "key": "bar_aligned_over_mid_foot",
+              "label": "Bar aligned over mid-foot",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "bar_drifts_forward",
+              "label": "Bar drifts forward",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "arms_fall_forward",
+              "label": "Arms fall forward",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "shoulder_mobility_restriction_suspected",
+              "label": "Shoulder mobility restriction suspected",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hurdle_step",
+      "label": "Hurdle Step",
+      "sections": [
+        {
+          "id": "pelvis_core_control",
+          "label": "Pelvis & Core Control",
+          "observations": [
+            {
+              "key": "pelvis_stable",
+              "label": "Pelvis stable",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "pelvic_drop_trendelenburg",
+              "label": "Pelvic drop (Trendelenburg)",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "excessive_rotation",
+              "label": "Excessive rotation",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "stance_leg",
+          "label": "Stance Leg",
+          "observations": [
+            {
+              "key": "stance_knee_stable",
+              "label": "Knee stable",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "stance_knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "stance_knee_varus",
+              "label": "Knee varus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "stance_ankle_instability",
+              "label": "Ankle instability",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "stepping_leg",
+          "label": "Stepping Leg",
+          "observations": [
+            {
+              "key": "clears_hurdle_smoothly",
+              "label": "Clears hurdle smoothly",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "toe_drag",
+              "label": "Toe drag",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "hip_flexion_restriction",
+              "label": "Hip flexion restriction",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "asymmetrical_movement",
+              "label": "Asymmetrical movement",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inline_lunge",
+      "label": "Inline Lunge",
+      "sections": [
+        {
+          "id": "trunk_torso",
+          "label": "Trunk & Torso",
+          "observations": [
+            {
+              "key": "upright_torso",
+              "label": "Upright torso",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "excessive_forward_lean",
+              "label": "Excessive forward lean",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        },
+        {
+          "id": "lower_body_alignment",
+          "label": "Lower Body Alignment",
+          "observations": [
+            {
+              "key": "knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "knee_varus",
+              "label": "Knee varus",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "heel_lift",
+              "label": "Heel lift",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shoulder_mobility",
+      "label": "Shoulder Mobility",
+      "sections": [
+        {
+          "id": "shoulder_complex",
+          "label": "Shoulder Complex",
+          "observations": [
+            {
+              "key": "hands_within_one_length",
+              "label": "Hands within one hand length",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "asymmetry_detected",
+              "label": "Asymmetry detected",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "pain_during_movement",
+              "label": "Pain during movement",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "active_straight_leg_raise",
+      "label": "Active Straight Leg Raise",
+      "sections": [
+        {
+          "id": "leg_mobility",
+          "label": "Leg Mobility",
+          "observations": [
+            {
+              "key": "ankle_reaches_mid_thigh",
+              "label": "Ankle reaches mid-thigh",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "contralateral_leg_lifts",
+              "label": "Opposite leg lifts",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "pelvic_rotation",
+              "label": "Pelvic rotation",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trunk_stability_pushup",
+      "label": "Trunk Stability Push-Up",
+      "sections": [
+        {
+          "id": "core_stability",
+          "label": "Core Stability",
+          "observations": [
+            {
+              "key": "body_moves_as_unit",
+              "label": "Body moves as a unit",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "lumbar_sag",
+              "label": "Lumbar sag",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "pain_reported",
+              "label": "Pain reported",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rotary_stability",
+      "label": "Rotary Stability",
+      "sections": [
+        {
+          "id": "diagonal_control",
+          "label": "Diagonal Control",
+          "observations": [
+            {
+              "key": "smooth_controlled_motion",
+              "label": "Smooth controlled motion",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1, 2, 3]
+            },
+            {
+              "key": "pain_during_movement",
+              "label": "Pain during movement",
+              "score_range": [0, 1, 2, 3]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

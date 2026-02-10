@@ -6,10 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": {
-        target: "https://fms-rag-app.onrender.com",
+      "/api/generate-workout": {
+        target: "http://localhost:8000",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+      "/api": {
+        target: "http://localhost:8080", // Restore original backend port for students
+        changeOrigin: true,
       },
     },
   },

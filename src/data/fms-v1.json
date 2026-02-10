@@ -1,0 +1,587 @@
+{
+  "version": "v1",
+  "movements": [
+    {
+      "id": "overhead_squat",
+      "label": "Overhead Squat (Deep Squat)",
+      "score_config": {
+        "type": "symmetrical"
+      },
+      "sections": [
+        {
+          "id": "trunk_torso",
+          "label": "Trunk & Torso",
+          "observations": [
+            {
+              "key": "upright_torso",
+              "label": "Upright torso",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_forward_lean",
+              "label": "Excessive forward lean",
+              "score_range": [0, 1]
+            },
+            { "key": "rib_flare", "label": "Rib flare", "score_range": [0, 1] },
+            {
+              "key": "lumbar_flexion",
+              "label": "Lumbar flexion",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "lumbar_extension_sway_back",
+              "label": "Lumbar extension / sway back",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "lower_limb",
+          "label": "Lower Limb",
+          "observations": [
+            {
+              "key": "knees_track_over_toes",
+              "label": "Knees track over toes",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_varus",
+              "label": "Knee varus",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "uneven_depth",
+              "label": "Uneven depth",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "feet",
+          "label": "Feet",
+          "observations": [
+            {
+              "key": "heels_stay_down",
+              "label": "Heels stay down",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "heels_lift",
+              "label": "Heels lift",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_pronation",
+              "label": "Excessive pronation",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_supination",
+              "label": "Excessive supination",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "upper_body_bar_position",
+          "label": "Upper Body / Bar",
+          "observations": [
+            {
+              "key": "bar_aligned_over_mid_foot",
+              "label": "Bar aligned over mid-foot",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "bar_drifts_forward",
+              "label": "Bar drifts forward",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "arms_fall_forward",
+              "label": "Arms fall forward",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "shoulder_mobility_restriction_suspected",
+              "label": "Shoulder mobility restriction suspected",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hurdle_step",
+      "label": "Hurdle Step",
+      "score_config": {
+        "type": "asymmetrical"
+      },
+      "sections": [
+        {
+          "id": "pelvis_core_control",
+          "label": "Pelvis & Core Control",
+          "observations": [
+            {
+              "key": "pelvis_stable",
+              "label": "Pelvis stable",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "pelvic_drop_trendelenburg",
+              "label": "Pelvic drop (Trendelenburg)",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_rotation",
+              "label": "Excessive rotation",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "stance_leg",
+          "label": "Stance Leg",
+          "observations": [
+            {
+              "key": "knee_stable",
+              "label": "Knee stable",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_varus",
+              "label": "Knee varus",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "ankle_instability",
+              "label": "Ankle instability",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "stepping_leg",
+          "label": "Stepping Leg",
+          "observations": [
+            {
+              "key": "clears_hurdle_smoothly",
+              "label": "Clears hurdle smoothly",
+              "score_range": [0, 1]
+            },
+            { "key": "toe_drag", "label": "Toe drag", "score_range": [0, 1] },
+            {
+              "key": "hip_flexion_restriction",
+              "label": "Hip flexion restriction",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "asymmetrical_movement",
+              "label": "Asymmetrical movement",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inline_lunge",
+      "label": "Inline Lunge",
+      "score_config": {
+        "type": "asymmetrical"
+      },
+      "sections": [
+        {
+          "id": "alignment",
+          "label": "Alignment",
+          "observations": [
+            {
+              "key": "head_neutral",
+              "label": "Head neutral",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "forward_head",
+              "label": "Forward head",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "trunk_upright",
+              "label": "Trunk upright",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_forward_lean",
+              "label": "Excessive forward lean",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "lateral_shift",
+              "label": "Lateral shift",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "lower_body_control",
+          "label": "Lower Body Control",
+          "observations": [
+            {
+              "key": "knee_tracks_over_foot",
+              "label": "Knee tracks over foot",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_valgus",
+              "label": "Knee valgus",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_instability",
+              "label": "Knee instability",
+              "score_range": [0, 1]
+            },
+            { "key": "heel_lift", "label": "Heel lift", "score_range": [0, 1] }
+          ]
+        },
+        {
+          "id": "balance_stability",
+          "label": "Balance & Stability",
+          "observations": [
+            {
+              "key": "stable_throughout",
+              "label": "Stable throughout",
+              "score_range": [0, 1]
+            },
+            { "key": "wobbling", "label": "Wobbling", "score_range": [0, 1] },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "unequal_weight_distribution",
+              "label": "Unequal weight distribution",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shoulder_mobility",
+      "label": "Shoulder Mobility",
+      "score_config": {
+        "type": "asymmetrical",
+        "clearing_test": true,
+        "clearing_label": "Pain on Clearing?"
+      },
+      "sections": [
+        {
+          "id": "reach_quality",
+          "label": "Reach Quality",
+          "observations": [
+            {
+              "key": "hands_within_fist_distance",
+              "label": "Hands within fist distance",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "hands_within_hand_length",
+              "label": "Hands within hand length",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_gap",
+              "label": "Excessive gap",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "asymmetry_present",
+              "label": "Asymmetry present",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "compensation",
+          "label": "Compensation",
+          "observations": [
+            {
+              "key": "no_compensation",
+              "label": "No compensation",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "spine_flexion",
+              "label": "Spine flexion",
+              "score_range": [0, 1]
+            },
+            { "key": "rib_flare", "label": "Rib flare", "score_range": [0, 1] },
+            {
+              "key": "scapular_winging",
+              "label": "Scapular winging",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "pain",
+          "label": "Pain",
+          "observations": [
+            {
+              "key": "no_pain",
+              "label": "No pain reported",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "pain_reported",
+              "label": "Pain reported",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "active_straight_leg_raise",
+      "label": "Active Straight Leg Raise (ASLR)",
+      "score_config": {
+        "type": "asymmetrical"
+      },
+      "sections": [
+        {
+          "id": "non_moving_leg",
+          "label": "Non-Moving Leg",
+          "observations": [
+            {
+              "key": "remains_flat",
+              "label": "Remains flat",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "knee_bends",
+              "label": "Knee bends",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "hip_externally_rotates",
+              "label": "Hip externally rotates",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "foot_lifts_off_floor",
+              "label": "Foot lifts off floor",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "moving_leg",
+          "label": "Moving Leg",
+          "observations": [
+            {
+              "key": "gt_80_hip_flexion",
+              "label": ">80 hip flexion",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "between_60_80_hip_flexion",
+              "label": "60-80 hip flexion",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "lt_60_hip_flexion",
+              "label": "<60 hip flexion",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "hamstring_restriction",
+              "label": "Hamstring restriction",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "pelvic_control",
+          "label": "Pelvic Control",
+          "observations": [
+            {
+              "key": "pelvis_stable",
+              "label": "Pelvis stable",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "anterior_tilt",
+              "label": "Anterior tilt",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "posterior_tilt",
+              "label": "Posterior tilt",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trunk_stability_pushup",
+      "label": "Trunk Stability Push-Up",
+      "score_config": {
+        "type": "symmetrical",
+        "clearing_test": true,
+        "clearing_label": "Pain on Extension Clearing?"
+      },
+      "sections": [
+        {
+          "id": "body_alignment",
+          "label": "Body Alignment",
+          "observations": [
+            {
+              "key": "neutral_spine_maintained",
+              "label": "Neutral spine maintained",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "sagging_hips",
+              "label": "Sagging hips",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "pike_position",
+              "label": "Pike position",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "core_control",
+          "label": "Core Control",
+          "observations": [
+            {
+              "key": "initiates_as_one_unit",
+              "label": "Initiates as one unit",
+              "score_range": [0, 1]
+            },
+            { "key": "hips_lag", "label": "Hips lag", "score_range": [0, 1] },
+            {
+              "key": "excessive_lumbar_extension",
+              "label": "Excessive lumbar extension",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "upper_body",
+          "label": "Upper Body",
+          "observations": [
+            {
+              "key": "elbows_aligned",
+              "label": "Elbows aligned",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "uneven_arm_push",
+              "label": "Uneven arm push",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "shoulder_instability",
+              "label": "Shoulder instability",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rotary_stability",
+      "label": "Rotary Stability",
+      "score_config": {
+        "type": "asymmetrical",
+        "clearing_test": true,
+        "clearing_label": "Pain on Flexion Clearing?"
+      },
+      "sections": [
+        {
+          "id": "diagonal_pattern",
+          "label": "Diagonal Pattern",
+          "observations": [
+            {
+              "key": "smooth_controlled",
+              "label": "Smooth controlled",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "loss_of_balance",
+              "label": "Loss of balance",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "unable_to_complete",
+              "label": "Unable to complete",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "spinal_control",
+          "label": "Spinal Control",
+          "observations": [
+            {
+              "key": "neutral_maintained",
+              "label": "Neutral maintained",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "excessive_rotation",
+              "label": "Excessive rotation",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "lumbar_shift",
+              "label": "Lumbar shift",
+              "score_range": [0, 1]
+            }
+          ]
+        },
+        {
+          "id": "symmetry",
+          "label": "Symmetry",
+          "observations": [
+            {
+              "key": "symmetrical",
+              "label": "Symmetrical",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "left_side_deficit",
+              "label": "Left side deficit",
+              "score_range": [0, 1]
+            },
+            {
+              "key": "right_side_deficit",
+              "label": "Right side deficit",
+              "score_range": [0, 1]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
