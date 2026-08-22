@@ -20,25 +20,25 @@ export const MetricInput = ({ id, label, value, onChange, index }) => {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.5, ease: "easeOut" }}
       viewport={{ once: true }}
-      className="group relative flex flex-col md:flex-row md:items-center justify-between p-6 md:p-8 rounded-3xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/5 transition-colors"
+      className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 md:p-8 rounded-2xl md:rounded-3xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/5 transition-colors"
     >
-      <div className="mb-6 md:mb-0 md:mr-8 flex-1">
-        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-2 block brand-font">
+      <div className="mb-4 md:mb-0 md:mr-8 flex-1">
+        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-1 block brand-font">
           0{index + 1}
         </span>
-        <h3 className="text-2xl md:text-3xl font-medium text-white group-hover:text-lime-400 transition-colors">
+        <h3 className="text-lg md:text-3xl font-medium text-white group-hover:text-lime-400 transition-colors">
           {label}
         </h3>
       </div>
 
-      <div className="relative flex items-center gap-2 bg-black/40 p-1 rounded-2xl border border-white/5">
+      <div className="relative flex items-center gap-1 bg-black/40 p-1 rounded-2xl border border-white/5 w-full md:w-auto">
         {options.map((opt) => {
           const isActive = value === opt.start;
           return (
             <button
               key={opt.start}
               onClick={() => onChange(id, opt.start)}
-              className={`relative w-16 h-14 md:w-20 md:h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
+              className={`relative flex-1 min-h-12 md:w-20 md:h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
                 isActive ? "bg-zinc-800" : "hover:bg-zinc-900"
               }`}
             >

@@ -4,7 +4,6 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { MetricInput } from "./MetricInput";
 import { MOVEMENTS } from "../data/mockData";
 import { generateWorkoutFromScores } from "../api/fms";
-import { saveAssessment, saveWorkout } from "../api/backend";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 
 export const InputView = () => {
@@ -72,79 +71,16 @@ export const InputView = () => {
         metadata: location.state?.session_metadata || {},
       };
 
-      // 3. Save Assessment (Go) - ORDER CHANGED per User Request
-      // Link raw inputs and finalized scores
-      console.log("Saving assessment...");
-
-      const studentIdInt = parseInt(id, 10);
-
-      const assessmentPayload = {
-        student_id: studentIdInt,
-        raw_fms_inputs: location.state?.raw_inputs || {},
-        calculated_scores: backendScores,
-      };
-
-      const savedAssessment = await saveAssessment(assessmentPayload);
-      console.log("Assessment saved:", savedAssessment);
-
-      // Robust Assessment ID Extraction
-      let assessmentId =
-        savedAssessment.assessment_id ||
-        savedAssessment.id ||
-        savedAssessment.ID;
-
-      // Handle edge case: Backend returns array [ {id: 1} ]
-      if (
-        !assessmentId &&
-        Array.isArray(savedAssessment) &&
-        savedAssessment.length > 0
-      ) {
-        assessmentId =
-          savedAssessment[0].assessment_id ||
-          savedAssessment[0].id ||
-          savedAssessment[0].ID;
-      }
-
-      // Handle edge case: Backend returns { data: { id: 1 } }
-      if (!assessmentId && savedAssessment.data) {
-        assessmentId =
-          savedAssessment.data.assessment_id ||
-          savedAssessment.data.id ||
-          savedAssessment.data.ID;
-      }
-
-      if (!assessmentId) {
-        console.warn("Could not find ID in response:", savedAssessment);
-        // We will try to proceed, but expect failure downstream if ID is strictly required
-        throw new Error(
-          `Failed to retrieve Assessment ID. Response keys: ${Object.keys(savedAssessment).join(", ")}`,
-        );
-      }
-
-      // 4. Generate Workout (Python)
-      // Now that we have the assessment saved, generate the content
-      console.log("Generating workout...");
+      pythonPayload.student_id = Number(id);
       const generatedWorkout = await generateWorkoutFromScores(pythonPayload);
-      console.log("Generation complete:", generatedWorkout);
-
-      // 5. Save Workout (Go)
-      // Link it to the assessment we just saved.
-      console.log("Saving workout...");
-      const workoutPayload = {
-        student_id: studentIdInt,
-        assessment_id: assessmentId,
-        ...generatedWorkout, // Persist the entire generated structure
-        created_at: new Date().toISOString(),
-      };
-
-      const savedWorkout = await saveWorkout(workoutPayload);
-      console.log("Workout saved:", savedWorkout);
-
-      // 6. Navigate to Confirmation View
-      navigate(`/coach/student/${id}/workout/current`, {
+      const dest = generatedWorkout?.id
+        ? `/coach/student/${id}/program/${generatedWorkout.id}`
+        : `/coach/student/${id}/workout/current`;
+      navigate(dest, {
         state: {
-          workout: generatedWorkout, // Display the one we just made
-          assessmentId: assessmentId, // Context for later
+          workout: generatedWorkout,
+          programId: generatedWorkout.id,
+          assessmentId: generatedWorkout.assessment_id,
         },
       });
     } catch (error) {
@@ -173,12 +109,12 @@ export const InputView = () => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -50 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="relative px-6 pt-24 pb-20 max-w-5xl mx-auto min-h-screen bg-[#050505]"
+      className="relative px-4 md:px-6 py-6 md:py-12 pb-28 max-w-5xl mx-auto"
     >
       {/* Back Button */}
       <button
         onClick={() => navigate(`/coach/student/${id}/fms`)}
-        className="mb-8 flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-2 text-zinc-500 hover:text-white transition-colors min-h-11"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Assessment</span>
@@ -188,18 +124,18 @@ export const InputView = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="mb-12 md:text-center"
+        className="mb-8 md:mb-12 md:text-center"
       >
-        <h1 className="text-5xl md:text-7xl font-medium tracking-tight mb-6 leading-[0.9] text-white">
+        <h1 className="text-3xl sm:text-5xl md:text-7xl font-medium tracking-tight mb-4 leading-[0.95] text-white">
           Review Scores
         </h1>
-        <p className="text-lg text-zinc-400 max-w-2xl md:mx-auto leading-relaxed">
+        <p className="text-base md:text-lg text-zinc-400 max-w-2xl md:mx-auto leading-relaxed">
           Adjust the calculated scores below if necessary. These values will
           drive the programming logic.
         </p>
       </motion.div>
 
-      <div className="space-y-24">
+      <div className="space-y-12 md:space-y-24">
         {Object.entries(groups).map(([groupName, movements]) => (
           <div key={groupName} className="relative">
             <div className="flex items-center gap-4 mb-8">
@@ -228,18 +164,18 @@ export const InputView = () => {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className="mt-32 flex justify-center pb-20"
+        className="mt-12 md:mt-24 flex justify-center"
       >
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className={`group relative inline-flex items-center gap-4 px-12 py-6 rounded-full transition-all duration-500 ${
+          className={`group relative inline-flex items-center justify-center gap-3 w-full md:w-auto min-h-14 px-8 py-4 md:px-12 md:py-6 rounded-full transition-all duration-500 ${
             isGenerating
               ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
               : "bg-white text-black hover:bg-lime-400"
           }`}
         >
-          <span className="text-xl font-bold tracking-tight">
+          <span className="text-lg md:text-xl font-bold tracking-tight">
             {isGenerating ? "Processing..." : "Generate Workout"}
           </span>
           {!isGenerating && (

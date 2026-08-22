@@ -1,73 +1,128 @@
-# React + TypeScript + Vite
+# FitAI UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Coach-facing web app for **FMS assessment → weekly program generation → review → athlete share**. Built with React, Vite, Tailwind, and Firebase Auth. Talks to the FitAI FastAPI backend via `/api` proxy in dev.
 
-Currently, two official plugins are available:
+**Repository:** [BluvernHQ/fitai](https://github.com/BluvernHQ/fitai)  
+**Branch:** `latest-ui`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## What it does
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Area | Description |
+|------|-------------|
+| **Coach dashboard** | Enroll athletes, open profiles, start assessments |
+| **FMS assessment** | Full 7-screen FMS; scores computed from faults (rules-first, not manual taps) |
+| **Program week** | Mon–Sun calendar, drag-to-reorder days, edit sets/load, swap exercises, approve |
+| **Athlete share** | Read-only public link (`/v/:token`) — no profile editing |
+| **Profile** | Name, age, gender, injuries; days/week, kit, 1RMs (apply on **next generate** only) |
+| **1RM log** | Date, lift, kg, source (coach / test / estimated) |
+| **Progress history** | FMS screens and saved workouts |
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 19, React Router 7, Vite 7
+- Tailwind CSS 4, Framer Motion, Lucide
+- Firebase Authentication (email/password)
+- Firebase Hosting + Firestore rules (optional mirror from API)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Project structure
+
+```text
+fitai-ui/
+├── src/
+│   ├── api/              # backend.js, clients.js, fms.js
+│   ├── components/       # pages and UI (FMS, program, profile, …)
+│   ├── context/          # authContext
+│   ├── firebase/         # config + auth helpers
+│   ├── lib/              # fmsScore.js, programView.js
+│   └── App.jsx           # routes
+├── shared/fms-spec/      # FMS spec JSON (shared with backend)
+├── firestore.rules       # Firestore security rules
+├── firebase.json         # Hosting + Firestore config
+├── vite.config.js        # dev proxy /api → backend :8000
+└── .env.example          # copy to .env (never commit .env)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Environment
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Copy `.env.example` to `.env`:
+
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_APP_ID=
+# optional — defaults to http://127.0.0.1:8000
+# VITE_RAG_PROXY=http://127.0.0.1:8000
 ```
+
+Firebase client keys are public by design; restrict access with Firebase Auth + Firestore rules.
+
+---
+
+## Run locally
+
+**1. Backend** (separate clone / `fitai` repo, branch `latest`):
+
+```bash
+cd fitai
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill DATABASE_URL, GROQ_API_KEY, etc.
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**2. UI:**
+
+```bash
+cd fitai-ui
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173). API calls go to `/api/*` → `127.0.0.1:8000`.
+
+---
+
+## Deploy (Firebase Hosting)
+
+```bash
+npm run build
+firebase deploy
+```
+
+Ensure backend `CORS_ORIGINS` includes your Hosting URL.
+
+---
+
+## Key routes
+
+| Path | Role |
+|------|------|
+| `/` | Login |
+| `/coach/dashboard` | Student list |
+| `/coach/student/:id` | Profile + plan inputs + 1RM log |
+| `/coach/student/:id/fms` | FMS assessment |
+| `/coach/student/:id/program/:programId` | Program editor |
+| `/v/:token` | Athlete read-only share |
+
+---
+
+## Product rules (UI)
+
+- **Profile fields** (days, kit, 1RMs) are inputs for the **next generate**, not live edits to the current week.
+- **Athlete share** cannot edit profile or program structure.
+- **1RM history** lives on the coach profile; Progress History is FMS + workouts only.
+
+---
+
+## Related repo
+
+Backend API, prescription engine, and exports: same GitHub repo, branch **`latest`** (`fitai/` directory when checked out from that branch).

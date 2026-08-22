@@ -1,19 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api/generate-workout": {
-        target: "http://localhost:8000",
+      "/api": {
+        target: process.env.VITE_RAG_PROXY || "http://127.0.0.1:8000",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
-      },
-      "/api": {
-        target: "http://localhost:8080", // Restore original backend port for students
-        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            const auth = req.headers.authorization;
+            if (auth) proxyReq.setHeader("Authorization", auth);
+          });
+        },
       },
     },
   },

@@ -19,10 +19,13 @@ export const subscribeToAuthChanges = (callback) => {
   return onAuthStateChanged(auth, callback);
 };
 
-export const getIdToken = async () => {
+export const getIdToken = async (forceRefresh = false) => {
+  if (typeof auth.authStateReady === "function") {
+    await auth.authStateReady();
+  }
   const user = auth.currentUser;
   if (!user) return null;
-  return await user.getIdToken();
+  return user.getIdToken(forceRefresh);
 };
 
 export const register = async (email, password, name) => {
