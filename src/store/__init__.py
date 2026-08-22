@@ -1,0 +1,1 @@
+# Firestore store package

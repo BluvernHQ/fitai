@@ -1,0 +1,207 @@
+{
+  "schema_version": 3,
+  "default_days_per_week": 3,
+  "min_days": 2,
+  "max_days": 6,
+  "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "ramp_order": ["raise", "activate", "mobilize", "potentiate"],
+  "circuit": {
+    "intra_rest_sec": 45,
+    "block_rest_sec": 120
+  },
+  "slots": {
+    "ramp": { "raise": 1, "activate": 2, "mobilize": 2, "potentiate": 1 },
+    "activation": 1
+  },
+  "test_to_pattern": {
+    "overhead_squat": "squat",
+    "hurdle_step": "lunge",
+    "inline_lunge": "lunge",
+    "shoulder_mobility": "push",
+    "active_straight_leg_raise": "hinge",
+    "trunk_stability_pushup": "push",
+    "rotary_stability": "rotation"
+  },
+  "coverage_patterns": ["squat", "hinge", "push", "pull", "lunge", "core", "rotation", "gait"],
+  "slot_blueprint": {
+    "block_a": ["primary", "rotation", "plyo"],
+    "block_b": ["secondary", "core", "corrective"],
+    "accessories": ["core", "gait"]
+  },
+  "section_labels": {
+    "ramp": { "label": "WARM-UPS", "format": "flow" },
+    "activation": { "label": "ACTIVATIONS", "format": "flow" },
+    "block_a": { "label": "MAINS BLOCK A", "format": "circuit" },
+    "block_b": { "label": "BLOCK B", "format": "circuit" },
+    "accessories": { "label": "ACCESSORIES", "format": "straight" }
+  },
+  "kind_tones": {
+    "gym": "accent",
+    "active_recovery": "info",
+    "passive_recovery": "calm",
+    "rest": "muted",
+    "deload": "warn",
+    "referral": "alert"
+  },
+  "role_by_pattern": {
+    "squat": "SQUAT",
+    "lunge": "LUNGE",
+    "hinge": "POS CHAIN",
+    "push": "PUSH",
+    "pull": "PULL",
+    "core": "CORE",
+    "rotation": "ROT CORE",
+    "plyo": "EXPLOSIVE",
+    "speed": "SPEED",
+    "gait": "GAIT",
+    "warmup": "PREP"
+  },
+  "slot_roles": {
+    "primary": "PRIMARY_{PATTERN}",
+    "secondary": "SECONDARY_{PATTERN}",
+    "rotation": "ANTI_ROTATION",
+    "plyo": "POWER",
+    "speed": "SPEED",
+    "core": "CORE",
+    "corrective": "CORRECTIVE",
+    "gait": "GAIT",
+    "raise": "RAISE",
+    "activate": "ACTIVATE",
+    "mobilize": "MOBILIZE",
+    "potentiate": "POTENTIATE",
+    "activation": "ACTIVATION"
+  },
+  "hard_constraints_by_token": {
+    "primary": ["pattern"],
+    "secondary": ["pattern"],
+    "rotation": ["pattern"],
+    "core": ["pattern"],
+    "plyo": ["pattern"],
+    "speed": ["pattern"],
+    "gait": ["pattern"],
+    "corrective": []
+  },
+  "mesocycle_by_status": {
+    "STOP": {
+      "weeks": 1,
+      "phases": ["referral"],
+      "volume": [1.0],
+      "intensity": [1.0],
+      "retest_after_week": 1
+    },
+    "MOBILITY": {
+      "weeks": 4,
+      "phases": ["build", "build", "build", "deload"],
+      "volume": [1.0, 1.05, 1.1, 0.7],
+      "intensity": [1.0, 1.0, 1.02, 0.85],
+      "retest_after_week": 4
+    },
+    "STABILITY": {
+      "weeks": 4,
+      "phases": ["build", "build", "intensify", "deload"],
+      "volume": [1.0, 1.05, 1.1, 0.7],
+      "intensity": [1.0, 1.03, 1.06, 0.85],
+      "retest_after_week": 4
+    },
+    "PATTERN": {
+      "weeks": 4,
+      "phases": ["build", "intensify", "intensify", "deload"],
+      "volume": [1.0, 1.0, 0.95, 0.7],
+      "intensity": [1.0, 1.05, 1.08, 0.85],
+      "retest_after_week": 4
+    },
+    "STRENGTH": {
+      "weeks": 4,
+      "phases": ["build", "intensify", "intensify", "deload"],
+      "volume": [1.0, 0.95, 0.9, 0.65],
+      "intensity": [1.0, 1.05, 1.08, 0.8],
+      "retest_after_week": 4
+    },
+    "POWER": {
+      "weeks": 4,
+      "phases": ["build", "intensify", "intensify", "deload"],
+      "volume": [1.0, 0.9, 0.85, 0.65],
+      "intensity": [1.0, 1.04, 1.08, 0.8],
+      "retest_after_week": 4
+    }
+  },
+  "dose_by_status": {
+    "STOP": {
+      "warmup": { "sets": 1, "reps": "8-10", "rpe": 4, "intensity": 0, "rest_sec": 30, "tempo": "Smooth" },
+      "main": { "sets": 0, "reps": "0", "rpe": null, "intensity": 0, "rest_sec": 0, "tempo": "N/A" },
+      "backdown": { "sets": 0, "reps": "0", "rpe": null, "intensity": 0, "rest_sec": 0, "tempo": "N/A" },
+      "accessory": { "sets": 2, "reps": "8-10", "rpe": 4, "intensity": 0, "rest_sec": 45, "tempo": "Controlled" }
+    },
+    "MOBILITY": {
+      "main": { "sets": 3, "reps": "10", "rpe": 6, "intensity": 0.55, "rest_sec": 45, "tempo": "3-1-3-0" },
+      "backdown": { "sets": 2, "reps": "10", "rpe": 5, "intensity": 0.45, "rest_sec": 45, "tempo": "Controlled" },
+      "accessory": { "sets": 2, "reps": "12", "rpe": 6, "intensity": 0.0, "rest_sec": 45, "tempo": "Controlled" },
+      "warmup": { "sets": 1, "reps": "8", "rpe": 4, "intensity": 0.0, "rest_sec": 30, "tempo": "Smooth" }
+    },
+    "STABILITY": {
+      "main": { "sets": 3, "reps": "8", "rpe": 7, "intensity": 0.65, "rest_sec": 45, "tempo": "3-1-1-0" },
+      "backdown": { "sets": 2, "reps": "10", "rpe": 6, "intensity": 0.5, "rest_sec": 45, "tempo": "Controlled" },
+      "accessory": { "sets": 3, "reps": "10", "rpe": 6, "intensity": 0.0, "rest_sec": 45, "tempo": "Controlled" },
+      "warmup": { "sets": 1, "reps": "6", "rpe": 4, "intensity": 0.0, "rest_sec": 30, "tempo": "Smooth" }
+    },
+    "PATTERN": {
+      "main": { "sets": 4, "reps": "8", "rpe": 8, "intensity": 0.7, "rest_sec": 45, "tempo": "2-1-2-0" },
+      "backdown": { "sets": 3, "reps": "10", "rpe": 7, "intensity": 0.55, "rest_sec": 45, "tempo": "Controlled" },
+      "accessory": { "sets": 3, "reps": "10", "rpe": 7, "intensity": 0.0, "rest_sec": 45, "tempo": "Controlled" },
+      "warmup": { "sets": 1, "reps": "6", "rpe": 5, "intensity": 0.0, "rest_sec": 30, "tempo": "Crisp" }
+    },
+    "STRENGTH": {
+      "main": { "sets": 4, "reps": "5", "rpe": 8, "intensity": 0.8, "rest_sec": 45, "tempo": "2-0-1-0" },
+      "backdown": { "sets": 3, "reps": "8", "rpe": 7, "intensity": 0.65, "rest_sec": 45, "tempo": "Controlled" },
+      "accessory": { "sets": 3, "reps": "10", "rpe": 7, "intensity": 0.0, "rest_sec": 45, "tempo": "Controlled" },
+      "warmup": { "sets": 1, "reps": "5", "rpe": 5, "intensity": 0.0, "rest_sec": 30, "tempo": "Crisp" }
+    },
+    "POWER": {
+      "main": { "sets": 5, "reps": "3", "rpe": 9, "intensity": 0.85, "rest_sec": 45, "tempo": "Explosive" },
+      "backdown": { "sets": 3, "reps": "6", "rpe": 8, "intensity": 0.7, "rest_sec": 45, "tempo": "Controlled" },
+      "accessory": { "sets": 3, "reps": "6", "rpe": 7, "intensity": 0.0, "rest_sec": 45, "tempo": "Explosive" },
+      "warmup": { "sets": 1, "reps": "4", "rpe": 5, "intensity": 0.0, "rest_sec": 30, "tempo": "Elastic" }
+    }
+  },
+  "dose_key_by_section": {
+    "ramp": "warmup",
+    "activation": "warmup",
+    "block_a": "main",
+    "block_b": "backdown",
+    "accessories": "accessory"
+  },
+  "week_type_by_status": {
+    "STOP": "referral",
+    "MOBILITY": "corrective",
+    "STABILITY": "corrective",
+    "PATTERN": "build",
+    "STRENGTH": "intensification",
+    "POWER": "power"
+  },
+  "recovery_presets": {
+    "active_recovery": {
+      "title": "Active recovery",
+      "notes": "Easy walk or bike plus mobility. No loaded work."
+    },
+    "passive_recovery": {
+      "title": "Passive recovery",
+      "notes": "Off feet. Soft tissue optional. Sleep and hydration."
+    },
+    "rest": {
+      "title": "Full rest",
+      "notes": "No training."
+    },
+    "deload": {
+      "title": "Deload",
+      "notes": "Cut volume. Technique and mobility only."
+    }
+  },
+  "lift_key_by_pattern": {
+    "squat": "back_squat",
+    "lunge": "back_squat",
+    "hinge": "deadlift",
+    "push": "bench_press",
+    "pull": "row"
+  },
+  "load_rounding": 2.5
+}

@@ -1,151 +1,286 @@
-import pandas as pd
+#!/usr/bin/env python3
+"""Ingest the FIT AI exercise toolkit + squat CSV into a tagged catalog."""
+
+from __future__ import annotations
+
+import csv
 import json
 import os
 import re
+from pathlib import Path
 
-# CONFIGURATION
-INPUT_EXCEL_PATH = 'data/raw/SQUAT (PROGRESSION).xlsx'
-OUTPUT_JSON_PATH = 'data/processed/exercise_knowledge_base.json'
+from openpyxl import load_workbook
 
-# --- 1. SMART TAGGING LOGIC ---
-# This maps keywords in the Exercise Name to specific FMS Faults.
-TAG_RULES = {
-    # DEEP SQUAT FAULTS
-    "ankle": ["fix_heels_lift", "ankle_mobility"],
-    "dorsiflexion": ["fix_heels_lift", "ankle_mobility"],
-    "heel": ["fix_heels_lift"],
-    "wall slide": ["fix_thoracic_stiffness", "fix_forward_lean"],
-    "thoracic": ["fix_forward_lean", "thoracic_mobility"],
-    "band": ["fix_knee_valgus", "rnt_correction"], # Bands often fix valgus
-    "valgus": ["fix_knee_valgus"],
-    "glute": ["fix_knee_valgus", "glute_activation"],
+from src.taxonomy import (
+    CATEGORY_ALIASES,
+    SHEET_PATTERN,
+    SHEET_PROGRAM_ROLE,
+    TYPO_FIXES,
+    generate_smart_tags,
+)
 
-    # Added for more differentiation
-    "pain": ["stop"],
-    "asymmetry": ["fix_asymmetry"],
-    "rotation": ["fix_rotary_instability"],
-    "pelvic": ["fix_pelvic_drop", "fix_pelvic_tilt"],
-    "hip": ["pattern_leg_raise", "fix_hip_rotation"],
-    "shoulder": ["pattern_shoulder"],
-    "core": ["fix_core_stability"],
-    "lumbar": ["fix_lumbar_flexion", "fix_lumbar_extension"],
-    "rib": ["fix_rib_flare"],
-    
-    # CORE / STABILITY FAULTS
-    "plank": ["fix_lumbar_extension", "core_stability"],
-    "deadbug": ["fix_rib_flare", "core_stability"],
-    "chop": ["fix_rotary_instability", "anti_rotation"],
-    "lift": ["fix_rotary_instability", "anti_rotation"],
-    "carry": ["fix_asymmetry", "stability"],
-    
-    # GENERAL PATTERNS
-    "squat": ["pattern_squat"],
-    "lunge": ["pattern_lunge"],
-    "deadlift": ["pattern_hinge"],
-    "single leg": ["fix_asymmetry", "unilateral"]
+ROOT = Path(__file__).resolve().parents[2]
+INPUT_XLSX = ROOT / "data/raw/FIT_AI_Exercise_Description_Toolkit.xlsx"
+INPUT_CSV = ROOT / "data/raw/squat_data_sheet.csv"
+OUTPUT_JSON = ROOT / "data/processed/exercise_catalog.json"
+LEGACY_JSON = ROOT / "data/processed/exercise_knowledge_base.json"
+
+LEVEL_RE = re.compile(r"Level\s+(\d+)", re.I)
+BOILERPLATE_RE = re.compile(
+    r"This variation manipulates leverage, loading, stability", re.I
+)
+
+ACRONYM_EQUIPMENT = {
+    "BW": "bodyweight",
+    "DB": "dumbbell",
+    "KB": "kettlebell",
+    "BB": "barbell",
+    "TRX": "trx",
+    "MB": "medball",
+    "SB": "sandbag",
+    "LM": "landmine",
+    "SM": "smith",
+    "BAND": "band",
+    "BANDED": "band",
+    "WALL": "wall",
+    "CABLE": "cable",
+    "PLATE": "plate",
 }
 
-def generate_smart_tags(name, category, level):
-    """
-    Scans the exercise name and category to auto-assign correction tags.
-    """
-    # Base tags
-    tags = [category.lower().replace(" ", "_"), f"level_{level}"]
-    
-    # Combine text for searching
-    search_text = (name + " " + category).lower()
-    
-    # Keyword Matching
-    for keyword, new_tags in TAG_RULES.items():
-        if keyword in search_text:
-            tags.extend(new_tags)
-            
-    # Remove duplicates
-    return list(set(tags))
+
+def slug(text: str) -> str:
+    text = (text or "").strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return text.strip("_") or "unnamed"
+
+
+def normalize_typos(text: str) -> str:
+    out = text or ""
+    for bad, good in TYPO_FIXES.items():
+        out = re.sub(re.escape(bad), good, out, flags=re.I)
+    return out
+
+
+def parse_ramp_role(family: str) -> str | None:
+    upper = family.upper()
+    if "RAISE" in upper:
+        return "raise"
+    if "ACTIVATE" in upper:
+        return "activate"
+    if "MOBIL" in upper:
+        return "mobilize"
+    if "POTENTIATE" in upper:
+        return "potentiate"
+    return None
+
+
+def parse_equipment(name: str) -> list[str]:
+    tokens = set(re.findall(r"[A-Z]{2,}", name.upper()))
+    found = []
+    for token, eq in ACRONYM_EQUIPMENT.items():
+        if token in tokens or token in name.upper():
+            found.append(eq)
+    if not found:
+        found.append("bodyweight")
+    return sorted(set(found))
+
+
+def parse_laterality(name: str) -> str | None:
+    upper = name.upper()
+    if "U/L" in upper or "UNILATERAL" in upper or "SINGLE LEG" in upper or re.search(r"\bSL\b", upper):
+        return "unilateral"
+    if "B/L" in upper or "BILATERAL" in upper:
+        return "bilateral"
+    return None
+
+
+def parse_muscles(text: str) -> dict:
+    if not text:
+        return {"primary": [], "secondary": []}
+    primary, secondary = [], []
+    m = re.search(r"Primary:\s*([^;]+)", text, re.I)
+    if m:
+        primary = [p.strip() for p in m.group(1).split(",") if p.strip()]
+    m = re.search(r"Secondary:\s*([^;]+)", text, re.I)
+    if m:
+        secondary = [p.strip() for p in m.group(1).split(",") if p.strip()]
+    return {"primary": primary, "secondary": secondary}
+
+
+def is_boilerplate(desc: str) -> bool:
+    return bool(desc and BOILERPLATE_RE.search(desc))
+
+
+def load_squat_csv() -> dict[tuple[str, str], dict]:
+    """Parse the messy squat CSV, repairing unquoted commas inside parentheses."""
+    lookup = {}
+    if not INPUT_CSV.exists():
+        return lookup
+
+    raw_rows = []
+    with open(INPUT_CSV, newline="", encoding="utf-8-sig") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)
+        for row in reader:
+            raw_rows.append(row)
+
+    for row in raw_rows:
+        if not row or not any(c.strip() for c in row):
+            continue
+        cells = [c.strip() for c in row]
+        # Skip acronym footer
+        if cells[0].upper() in {"B/L", "U/L", "BW", "DB", "KB", "BB"} or (
+            not cells[0].isdigit() and not cells[1]
+        ):
+            if not (len(cells) > 1 and cells[1].upper().startswith("LEVEL")):
+                continue
+
+        # Reconstruct: SL NO, Category, Level, Variation, Description, Muscles, Notes
+        if len(cells) < 4:
+            continue
+        sl, category, level, *rest = cells
+        if not category or not str(level).upper().startswith("LEVEL"):
+            continue
+
+        variation = rest[0] if rest else ""
+        # Merge split variation names with unclosed parentheses
+        idx = 1
+        while idx < len(rest) and variation.count("(") > variation.count(")"):
+            variation = variation + "," + rest[idx]
+            idx += 1
+        leftover = rest[idx:]
+        description = leftover[0] if leftover else ""
+        muscles = leftover[1] if len(leftover) > 1 else ""
+        notes = leftover[2] if len(leftover) > 2 else ""
+
+        # If muscles field doesn't look like muscles, it may be notes
+        if muscles and "Primary" not in muscles and not notes:
+            notes, muscles = muscles, ""
+            for item in leftover[1:]:
+                if "Primary" in item:
+                    muscles = item
+                    notes = " ".join(x for x in leftover[1:] if x != item)
+                    break
+
+        key_cat = CATEGORY_ALIASES.get(category.upper(), category.upper())
+        key_name = normalize_typos(variation).upper()
+        lookup[(key_cat, key_name)] = {
+            "category": category,
+            "level": level,
+            "variation": variation,
+            "description": description,
+            "muscles": parse_muscles(muscles),
+            "indications_text": notes.strip(),
+        }
+    return lookup
+
+
+def ingest_workbook() -> list[dict]:
+    wb = load_workbook(INPUT_XLSX, data_only=True)
+    squat_lookup = load_squat_csv()
+    catalog = []
+    seen_ids = set()
+
+    for sheet_name, pattern in SHEET_PATTERN.items():
+        if sheet_name not in wb.sheetnames:
+            continue
+        ws = wb[sheet_name]
+        family = "UNCATEGORIZED"
+        program_role = SHEET_PROGRAM_ROLE.get(sheet_name, "accessory")
+
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            name = normalize_typos(str(row[0]).strip()) if row[0] else ""
+            desc = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+            if not name or name.lower() == "exercise name":
+                continue
+            if name and not desc:
+                family = name
+                continue
+
+            level_match = LEVEL_RE.search(desc)
+            level = int(level_match.group(1)) if level_match else 1
+            ramp_role = parse_ramp_role(family) if sheet_name == "WARM-UP" else None
+            role = program_role
+            if ramp_role == "activate":
+                role = "activation"
+            elif ramp_role in ("raise", "mobilize", "potentiate"):
+                role = "warmup"
+
+            csv_key = (
+                CATEGORY_ALIASES.get(family.upper(), family.upper()),
+                name.upper(),
+            )
+            csv_row = squat_lookup.get(csv_key)
+            muscles = {"primary": [], "secondary": []}
+            indications = ""
+            if csv_row:
+                muscles = csv_row["muscles"]
+                indications = csv_row["indications_text"]
+                if is_boilerplate(desc) and csv_row["description"]:
+                    desc = csv_row["description"]
+
+            exercise_id = slug(f"{sheet_name}_{family}_{name}_{level}")
+            n = 2
+            base_id = exercise_id
+            while exercise_id in seen_ids:
+                exercise_id = f"{base_id}_{n}"
+                n += 1
+            seen_ids.add(exercise_id)
+
+            entry = {
+                "id": exercise_id,
+                "name": name,
+                "family": family,
+                "pattern": pattern,
+                "aliases": [csv_row["variation"]] if csv_row and csv_row["variation"] != name else [],
+                "ramp_role": ramp_role,
+                "program_role": role,
+                "level": level,
+                "equipment": parse_equipment(name + " " + family),
+                "laterality": parse_laterality(name),
+                "description": desc,
+                "muscles": muscles,
+                "indications_text": indications,
+                "source_sheet": sheet_name,
+                "tags": generate_smart_tags(name, family, pattern, level, ramp_role),
+                "impact": None,
+                "load_basis": None,
+                "contraindications": [],
+                "regression_ids": [],
+            }
+            catalog.append(entry)
+
+    return catalog
+
 
 def run_ingestion():
-    print(f"Loading data from {INPUT_EXCEL_PATH}...")
-    
-    if not os.path.exists(INPUT_EXCEL_PATH):
-        print(f"❌ Error: File not found at {INPUT_EXCEL_PATH}")
+    if not INPUT_XLSX.exists():
+        print(f"❌ Missing toolkit: {INPUT_XLSX}")
         return
-
-    try:
-        # 1. READ THE MATRIX
-        df_matrix = pd.read_excel(INPUT_EXCEL_PATH, sheet_name=0, header=2, engine='openpyxl')
-        
-        # 2. READ THE MANUAL DESCRIPTIONS
-        try:
-            df_desc = pd.read_excel(INPUT_EXCEL_PATH, sheet_name='Descriptions', engine='openpyxl')
-            desc_lookup = dict(zip(df_desc.iloc[:, 0].str.strip(), df_desc.iloc[:, 1]))
-            print("✅ Found 'Descriptions' sheet. Using manual text.")
-        except:
-            print("⚠️ 'Descriptions' sheet not found. Using generic text.")
-            desc_lookup = {}
-
-    except Exception as e:
-        print(f"❌ Error reading Excel file: {e}")
-        return
-
-    # Clean Matrix Columns
-    df_matrix.columns = [str(c).strip() for c in df_matrix.columns]
-    df_matrix = df_matrix.dropna(subset=['EXERCISE'])
-    
-    knowledge_base = []
-    count = 0
-    
-    print("🔄 Processing and Tagging exercises...")
-
-    for _, row in df_matrix.iterrows():
-        category = str(row['EXERCISE']).strip()
-        
-        for level in range(1, 11):
-            col_name = f'LEVEL {level}'
-            if col_name not in df_matrix.columns: continue
-            
-            cell_value = row[col_name]
-            if pd.isna(cell_value): continue
-            
-            # Handle multiple exercises in one cell
-            exercises = re.split(r',\s*(?![^()]*\))', str(cell_value))
-            exercises = [x.strip() for x in exercises if x.strip()]
-            
-            for ex_name in exercises:
-                
-                # Description Logic
-                if ex_name in desc_lookup and pd.notna(desc_lookup[ex_name]):
-                    final_description = desc_lookup[ex_name]
-                    source = "Manual"
-                else:
-                    final_description = (
-                        f"A Level {level} {category} exercise. "
-                        f"Targeting specific movement patterns and corrective strategies."
-                    )
-                    source = "Auto"
-
-                # --- NEW: APPLY SMART TAGS ---
-                smart_tags = generate_smart_tags(ex_name, category, level)
-
-                entry = {
-                    "id": f"sq_{level}_{count}",
-                    "exercise_name": ex_name,
-                    "category": category,
-                    "difficulty_level": level,
-                    "description": final_description,
-                    "description_source": source,
-                    "tags": smart_tags  # <--- NOW CONTAINS 'fix_heels_lift' etc.
+    os.makedirs(OUTPUT_JSON.parent, exist_ok=True)
+    catalog = ingest_workbook()
+    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+        json.dump(catalog, f, indent=2)
+    # Keep legacy path so old retriever still has data during transition
+    with open(LEGACY_JSON, "w", encoding="utf-8") as f:
+        json.dump(
+            [
+                {
+                    "id": e["id"],
+                    "exercise_name": e["name"],
+                    "category": e["family"],
+                    "difficulty_level": e["level"],
+                    "description": e["description"],
+                    "description_source": "ingested",
+                    "tags": e["tags"],
                 }
-                
-                knowledge_base.append(entry)
-                count += 1
+                for e in catalog
+            ],
+            f,
+            indent=2,
+        )
+    print(f"✅ Ingested {len(catalog)} exercises → {OUTPUT_JSON}")
 
-    # Save to JSON
-    os.makedirs(os.path.dirname(OUTPUT_JSON_PATH), exist_ok=True)
-    with open(OUTPUT_JSON_PATH, 'w', encoding='utf-8') as f:
-        json.dump(knowledge_base, f, indent=4)
-        
-    print(f"✅ Success! Processed and Auto-Tagged {count} exercises.")
-    print(f"📁 Database ready at: {OUTPUT_JSON_PATH}")
 
 if __name__ == "__main__":
     run_ingestion()
