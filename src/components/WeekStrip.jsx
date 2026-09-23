@@ -92,7 +92,7 @@ export function WeekStrip({
         )}
       </div>
       <div className="overflow-x-auto snap-strip no-scrollbar -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:overflow-visible">
-        <div className="flex gap-2 md:grid md:grid-cols-7 md:gap-2 min-w-0">
+        <div className="flex gap-2 md:grid md:grid-cols-7 md:gap-2 min-w-0 pe-4 md:pe-0">
           {calendar.map((cell, idx) => {
             const gymDay = gymDayForCell(cell, days);
             const meta = toneStyle(cell);
@@ -109,7 +109,7 @@ export function WeekStrip({
                 key={`${weekdayLabel}-${idx}-${cell.day ?? cell.kind}`}
                 onDragOver={(e) => handleDragOver(idx, e)}
                 onDrop={(e) => handleDrop(idx, e)}
-                className={`relative snap-start shrink-0 w-[42vw] min-w-[138px] max-w-[168px] md:w-auto md:min-w-0 md:max-w-none rounded-2xl p-3 text-left min-h-[124px] md:min-h-[132px] border transition-all ${meta.card} ${
+                className={`relative snap-start shrink-0 w-[38vw] min-w-[128px] max-w-[160px] md:w-auto md:min-w-0 md:max-w-none rounded-2xl p-3 text-left min-h-[124px] md:min-h-[132px] border transition-all ${meta.card} ${
                   selected ? meta.selected : ""
                 } ${cell.done ? "opacity-75" : ""} ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${
                   isDropTarget ? "ring-2 ring-lime-400/60 border-lime-400/40" : ""
@@ -128,10 +128,10 @@ export function WeekStrip({
                         draggable
                         onDragStart={(e) => handleDragStart(idx, e)}
                         onDragEnd={handleDragEnd}
-                        className="pointer-events-auto shrink-0 p-0.5 -ml-0.5 rounded text-zinc-600 hover:text-zinc-300 cursor-grab active:cursor-grabbing"
+                        className="pointer-events-auto shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 -ml-1 rounded text-zinc-600 hover:text-zinc-300 cursor-grab active:cursor-grabbing"
                         aria-label={`Drag ${weekdayLabel}`}
                       >
-                        <GripVertical className="w-3.5 h-3.5" />
+                        <GripVertical className="w-4 h-4" />
                       </span>
                     ) : null}
                     <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 truncate pointer-events-none">
@@ -143,13 +143,13 @@ export function WeekStrip({
                       type="button"
                       aria-label={cell.done ? "Mark not done" : "Mark done"}
                       onClick={() => onToggleDone?.(idx, !cell.done)}
-                      className={`pointer-events-auto relative z-10 w-7 h-7 rounded-full border flex items-center justify-center shrink-0 ${
+                      className={`pointer-events-auto relative z-10 min-h-11 min-w-11 rounded-full border flex items-center justify-center shrink-0 ${
                         cell.done
                           ? "bg-lime-400 border-lime-400 text-black"
                           : "border-white/20 text-transparent hover:border-lime-400/60"
                       }`}
                     >
-                      <Check className="w-3.5 h-3.5" />
+                      <Check className="w-4 h-4" />
                     </button>
                   ) : (
                     cell.done && (

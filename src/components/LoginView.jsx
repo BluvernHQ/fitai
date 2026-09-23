@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { login } from "../firebase/auth";
+import { BrandMark, FieldShell } from "./ui";
 
 export const LoginView = () => {
   const [email, setEmail] = useState("");
@@ -30,51 +31,34 @@ export const LoginView = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.8 }}
-      className="relative flex-1 w-full flex flex-col items-center justify-center px-4 py-10"
+      transition={{ duration: 0.7 }}
+      className="auth-stage relative flex-1 w-full flex flex-col items-center justify-center px-4 py-10"
       style={{
         paddingTop: "max(2.5rem, env(safe-area-inset-top))",
         paddingBottom: "max(2.5rem, env(safe-area-inset-bottom))",
       }}
     >
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-between mb-10">
-          <span className="text-lg font-bold tracking-tighter brand-font">
-            FIT.AI <span className="text-lime-400">PRO</span>
-          </span>
-          <Link
-            to="/signup"
-            className="text-zinc-400 hover:text-white transition-colors text-sm font-medium min-h-11 inline-flex items-center"
-          >
-            Sign Up
-          </Link>
-        </div>
-
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8 md:mb-12 text-left md:text-center"
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-10 md:mb-12 text-center"
         >
-          <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3 block brand-font">
-            System Access
-          </span>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight mb-3 leading-[0.95]">
-            Welcome <br /> <span className="text-zinc-600">Back.</span>
-          </h1>
-          <p className="text-zinc-400 text-base md:text-lg">
-            Sign in to continue your programming.
+          <BrandMark size="xl" className="block mb-5" />
+          <p className="text-zinc-400 text-base md:text-lg leading-relaxed max-w-sm mx-auto">
+            Precision movement screening and programming for elite coaches.
           </p>
         </motion.div>
 
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           onSubmit={handleSubmit}
           className="space-y-3"
         >
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
+          <FieldShell>
             <input
               type="email"
               placeholder="Email"
@@ -85,9 +69,9 @@ export const LoginView = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
             />
-          </div>
+          </FieldShell>
 
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
+          <FieldShell>
             <input
               type="password"
               placeholder="Password"
@@ -97,36 +81,50 @@ export const LoginView = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
             />
-          </div>
+          </FieldShell>
 
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="flex items-center gap-2 text-red-500 bg-red-500/10 p-4 rounded-2xl"
+              className="flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl"
             >
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span className="text-sm font-medium">{error}</span>
             </motion.div>
           )}
 
-          <div className="pt-3">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative inline-flex items-center gap-3 min-h-14 px-8 py-4 bg-white text-black rounded-full hover:bg-lime-400 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-500 w-full justify-center"
+              className="group btn-primary w-full min-h-14 text-base !rounded-full"
             >
               {isLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  <span className="text-lg font-bold tracking-tight">Enter System</span>
+                  <span>Enter workspace</span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </div>
         </motion.form>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.28 }}
+          className="mt-8 flex items-center justify-center gap-6 text-sm"
+        >
+          <Link
+            to="/signup"
+            className="text-zinc-300 hover:text-lime-400 transition-colors font-medium min-h-11 inline-flex items-center"
+          >
+            Create account
+          </Link>
+        </motion.div>
       </div>
     </motion.div>
   );

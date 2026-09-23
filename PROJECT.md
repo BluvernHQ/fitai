@@ -28,6 +28,8 @@ This document describes the **React UI** (`latest-ui` branch). The **FastAPI bac
 
 ---
 
+
+
 ## Coach workflow
 
 1. **Enroll** athlete (name, age, gender, default days/week).
@@ -40,19 +42,25 @@ This document describes the **React UI** (`latest-ui` branch). The **FastAPI bac
 
 ---
 
+
+
 ## UI modules
 
-| Module | File(s) | Notes |
-|--------|---------|-------|
-| Auth | `LoginView`, `SignupView`, `authContext` | Firebase email/password |
-| Dashboard | `StudentsDashboard`, `StudentCard` | List + enroll modal |
-| Profile | `StudentProfile` | Athlete details + plan inputs + 1RM log |
-| FMS | `FMSAssessment`, `fmsScore.js` | 7 screens, computed scores |
-| Program | `WorkoutResults`, `WeekStrip`, `SessionBoard` | Calendar grid, edit + approve |
-| Athlete | `AthleteProgramView`, `ProgramView` | Public read-only |
-| History | `ProgressHistory`, `WorkoutDetail` | Past assessments / workouts |
+
+| Module    | File(s)                                       | Notes                                   |
+| --------- | --------------------------------------------- | --------------------------------------- |
+| Auth      | `LoginView`, `SignupView`, `authContext`      | Firebase email/password                 |
+| Dashboard | `StudentsDashboard`, `StudentCard`            | List + enroll modal                     |
+| Profile   | `StudentProfile`                              | Athlete details + plan inputs + 1RM log |
+| FMS       | `FMSAssessment`, `fmsScore.js`                | 7 screens, computed scores              |
+| Program   | `WorkoutResults`, `WeekStrip`, `SessionBoard` | Calendar grid, edit + approve           |
+| Athlete   | `AthleteProgramView`, `ProgramView`           | Public read-only                        |
+| History   | `ProgressHistory`, `WorkoutDetail`            | Past assessments / workouts             |
+
 
 ---
+
+
 
 ## API integration
 
@@ -69,18 +77,24 @@ Important endpoints (proxied as `/api/...`):
 
 ---
 
+
+
 ## Branch & release
 
-| Branch | Contents |
-|--------|----------|
-| `latest-ui` | This React app (current snapshot) |
-| `latest` | FastAPI backend + prescription engine |
-| `frontend-react` | Previous UI development branch |
-| `main` | Backend history / stable API |
+
+| Branch           | Contents                              |
+| ---------------- | ------------------------------------- |
+| `latest-ui`      | This React app (current snapshot)     |
+| `latest`         | FastAPI backend + prescription engine |
+| `frontend-react` | Previous UI development branch        |
+| `main`           | Backend history / stable API          |
+
 
 When cutting a release, tag both branches or merge into your deployment branch after QA.
 
 ---
+
+
 
 ## Local development checklist
 
@@ -90,6 +104,8 @@ When cutting a release, tag both branches or merge into your deployment branch a
 - [ ] CORS includes `http://localhost:5173`
 
 ---
+
+
 
 ## Author
 

@@ -9,6 +9,7 @@ import {
   BarChart,
 } from "lucide-react";
 import { getStudent, getLiftMaxHistory, updateStudent, getStudentWorkouts } from "../api/backend";
+import { estimateOneRm } from "../api/fms";
 
 const LIFT_KEYS = ["back_squat", "deadlift", "bench_press", "row"];
 const SOURCE_OPTIONS = [
@@ -67,6 +68,11 @@ export const StudentProfile = () => {
 
   const [latestDraft, setLatestDraft] = useState(null);
   const [retestDue, setRetestDue] = useState(false);
+  const [estLoad, setEstLoad] = useState("");
+  const [estReps, setEstReps] = useState("5");
+  const [estRpe, setEstRpe] = useState("10");
+  const [estResult, setEstResult] = useState(null);
+  const [estimating, setEstimating] = useState(false);
 
   const loadHistory = () =>
     getLiftMaxHistory(id)
@@ -117,11 +123,11 @@ export const StudentProfile = () => {
   }
 
   return (
-    <div className="px-4 md:px-6 py-5 md:py-10 pb-8">
+    <div className="px-4 md:px-6 py-5 md:py-10 pb-12">
       <div className="max-w-4xl mx-auto">
         <button
           onClick={() => navigate("/coach/dashboard")}
-          className="flex items-center gap-2 text-zinc-500 hover:text-white mb-5 min-h-11 transition-colors"
+          className="btn-ghost mb-5 -ml-1"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
@@ -238,7 +244,7 @@ export const StudentProfile = () => {
               <button
                 type="button"
                 onClick={() =>
-                  navigate(`/coach/student/${id}/fms`, {
+                  navigate(`/coach/student/${id}/assess`, {
                     state: { studentName: name || student.name },
                   })
                 }
@@ -246,6 +252,17 @@ export const StudentProfile = () => {
               >
                 <Activity className="w-4 h-4" />
                 {retestDue ? "Retest now" : "New Assessment"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(`/coach/student/${id}/fms`, {
+                    state: { studentName: name || student.name, batteries: ["fms"] },
+                  })
+                }
+                className="w-full min-h-11 py-2.5 px-6 rounded-xl bg-white/5 border border-white/10 text-sm text-zinc-300 hover:text-white"
+              >
+                FMS only (shortcut)
               </button>
               {latestDraft?.id && (
                 <button
@@ -297,7 +314,7 @@ export const StudentProfile = () => {
                         prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
                       )
                     }
-                    className={`min-h-10 px-3.5 py-2 rounded-full text-xs capitalize border ${
+                    className={`min-h-11 px-3.5 py-2 rounded-full text-xs capitalize border ${
                       on
                         ? "bg-lime-400 text-black border-lime-400"
                         : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
@@ -319,7 +336,7 @@ export const StudentProfile = () => {
                   key={option.id}
                   type="button"
                   onClick={() => setLiftSource(option.id)}
-                  className={`min-h-10 px-3.5 py-2 rounded-full text-xs border ${
+                  className={`min-h-11 px-3.5 py-2 rounded-full text-xs border ${
                     liftSource === option.id
                       ? "bg-lime-400 text-black border-lime-400"
                       : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
@@ -346,6 +363,118 @@ export const StudentProfile = () => {
               />
             </div>
           ))}
+
+          <div className="md:col-span-2 rounded-2xl border border-white/10 bg-black/30 p-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Estimate 1RM</h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                From a performed set using the research-backed reps × RPE table. Accept into Back Squat or apply sister-lift suggestions.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="block">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500">Load kg</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={estLoad}
+                  onChange={(e) => setEstLoad(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-base"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500">Reps</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={estReps}
+                  onChange={(e) => setEstReps(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-base"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500">RPE</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="6"
+                  max="10"
+                  inputMode="decimal"
+                  value={estRpe}
+                  onChange={(e) => setEstRpe(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-base"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={estimating || !estLoad}
+                onClick={async () => {
+                  setEstimating(true);
+                  try {
+                    const result = await estimateOneRm({
+                      load_kg: Number(estLoad),
+                      reps: Number(estReps),
+                      rpe: Number(estRpe),
+                      include_pro_rata: true,
+                    });
+                    setEstResult(result);
+                  } catch (err) {
+                    console.error(err);
+                    setEstResult(null);
+                  } finally {
+                    setEstimating(false);
+                  }
+                }}
+                className="min-h-11 px-4 rounded-full bg-lime-400 text-black text-xs font-bold disabled:opacity-40"
+              >
+                {estimating ? "Calculating…" : "Estimate"}
+              </button>
+              {estResult?.estimated_1rm != null && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMaxes((prev) => ({
+                        ...prev,
+                        back_squat: String(estResult.estimated_1rm),
+                      }))
+                    }
+                    className="min-h-11 px-4 rounded-full bg-white/10 text-xs font-medium"
+                  >
+                    Use as Back Squat ({estResult.estimated_1rm} kg)
+                  </button>
+                  {estResult.pro_rata && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMaxes((prev) => ({
+                          ...prev,
+                          back_squat: String(estResult.pro_rata.back_squat ?? estResult.estimated_1rm),
+                          deadlift: String(estResult.pro_rata.deadlift ?? prev.deadlift),
+                          bench_press: String(estResult.pro_rata.bench_press ?? prev.bench_press),
+                          row: String(estResult.pro_rata.row ?? prev.row),
+                        }))
+                      }
+                      className="min-h-11 px-4 rounded-full bg-white/10 text-xs font-medium"
+                    >
+                      Apply pro-rata maxes
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            {estResult?.estimated_1rm != null && (
+              <p className="text-xs text-zinc-400">
+                Estimated 1RM <span className="text-lime-300 font-semibold">{estResult.estimated_1rm} kg</span>
+                {estResult.percent_1rm != null && (
+                  <> · set was {(estResult.percent_1rm * 100).toFixed(1)}% · {estResult.method}</>
+                )}
+              </p>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={saving}

@@ -6,8 +6,6 @@ import {
   ChevronDown,
   Download,
   Home,
-  Moon,
-  MoreHorizontal,
   Printer,
   RefreshCw,
   Share2,
@@ -31,6 +29,7 @@ import {
 } from "../lib/programView";
 import { WeekStrip } from "./WeekStrip";
 import { SessionBoard } from "./SessionBoard";
+import { RecoveryBoard } from "./RecoveryBoard";
 
 function applyPatch(item, patch) {
   const next = { ...item, ...patch };
@@ -73,7 +72,6 @@ export const WorkoutResults = () => {
   const [dirty, setDirty] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const programId = paramProgramId || state?.programId || program?.id;
 
@@ -108,11 +106,11 @@ export const WorkoutResults = () => {
 
   if (!plan) {
     return (
-      <div className="min-h-screen pt-32 px-6 flex flex-col items-center justify-center text-center">
+      <div className="flex flex-col items-center justify-center text-center px-4 py-16 min-h-[50vh]">
         <h2 className="text-2xl font-bold text-white mb-4">No program draft</h2>
         <button
           onClick={() => navigate(`/coach/student/${id}/fms`)}
-          className="px-6 py-3 bg-lime-400 text-black font-bold rounded-xl"
+          className="btn-primary min-h-12 px-6"
         >
           Start Assessment
         </button>
@@ -135,6 +133,12 @@ export const WorkoutResults = () => {
   const updateCalendar = (idx, done) => {
     const next = structuredClone(plan);
     next.calendar[idx] = { ...next.calendar[idx], done };
+    commitPlan(next);
+  };
+
+  const patchCalendarCell = (idx, patch) => {
+    const next = structuredClone(plan);
+    next.calendar[idx] = { ...next.calendar[idx], ...patch };
     commitPlan(next);
   };
 
@@ -221,9 +225,10 @@ export const WorkoutResults = () => {
   const status = (program?.status || "draft").replace("_", " ");
 
   return (
-    <div className="px-4 md:px-6 py-5 md:py-8 pb-32 md:pb-36 max-w-[1120px] mx-auto">
-      <div className="flex items-center justify-between mb-5">
+    <div className="px-4 md:px-6 py-5 md:py-8 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] md:pb-36 max-w-[1120px] mx-auto">
+      <div className="flex items-center justify-between mb-5 gap-3">
         <button
+          type="button"
           onClick={() => navigate(`/coach/student/${id}`)}
           className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm min-h-11"
         >
@@ -231,10 +236,12 @@ export const WorkoutResults = () => {
           Profile
         </button>
         <button
+          type="button"
           onClick={() => navigate("/coach/dashboard")}
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg text-sm min-h-11"
+          className="flex items-center gap-2 px-3 min-h-11 bg-zinc-800 rounded-lg text-sm"
         >
-          <Home className="w-4 h-4" /> Dashboard
+          <Home className="w-4 h-4" />
+          <span className="hidden sm:inline">Dashboard</span>
         </button>
       </div>
 
@@ -278,7 +285,7 @@ export const WorkoutResults = () => {
                     const row = await getBlockWeek(id, plan.block_id, week);
                     navigate(`/coach/student/${id}/program/${row.id}`);
                   }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize ${
+                  className={`px-3 min-h-11 rounded-full text-xs font-medium capitalize ${
                     current ? "bg-lime-400 text-black" : "bg-white/8 text-zinc-400 hover:text-white"
                   }`}
                 >
@@ -290,7 +297,7 @@ export const WorkoutResults = () => {
             {plan.mesocycle.retest_due && (
               <button
                 onClick={() => navigate(`/coach/student/${id}/fms`)}
-                className="px-3 py-1.5 rounded-full text-xs bg-amber-400/20 text-amber-200"
+                className="px-3 min-h-11 rounded-full text-xs bg-amber-400/20 text-amber-200"
               >
                 Retest due
               </button>
@@ -334,22 +341,11 @@ export const WorkoutResults = () => {
           </div>
         )
       ) : (
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-white/5">
-              <Moon className="w-5 h-5 text-zinc-300" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
-                {selectedCell?.weekday} · {(selectedCell?.label || selectedCell?.kind || "").replace("_", " ")}
-              </p>
-              <h2 className="text-2xl font-semibold mb-2">{selectedCell?.title || "Recovery"}</h2>
-              <p className="text-zinc-400 max-w-2xl leading-relaxed">
-                {selectedCell?.notes || "No loaded work today."}
-              </p>
-            </div>
-          </div>
-        </section>
+        <RecoveryBoard
+          cell={selectedCell}
+          editable
+          onChange={(patch) => patchCalendarCell(calIdx, patch)}
+        />
       )}
       {!days.length && (
         <p className="text-amber-200/80 text-sm mt-4">This program has no session days yet.</p>
@@ -357,83 +353,95 @@ export const WorkoutResults = () => {
 
       {message && <p className="text-sm text-zinc-400 mt-4">{message}</p>}
 
-      <div className="fixed bottom-4 left-4 right-4 z-20">
-        <div className="max-w-[1120px] mx-auto flex flex-wrap items-center gap-2 p-2.5 rounded-2xl bg-[#0a0a0a]/95 backdrop-blur-md border border-white/10 shadow-2xl">
-          <button
-            disabled={saving || plan.referral}
-            onClick={() => decide("approve_as_is")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-lime-400 text-black font-bold disabled:opacity-40"
-          >
-            <Check className="w-4 h-4" /> Approve
-          </button>
-          <button
-            disabled={saving}
-            onClick={saveEdits}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 font-medium"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Save{dirty ? " *" : ""}
-          </button>
-          <div className="relative">
+      <div className="fixed-action-bar">
+        <div className="max-w-[1120px] mx-auto flex flex-col gap-2 p-2.5 rounded-2xl bg-[#0a0a0a]/95 backdrop-blur-md border border-white/10 shadow-2xl">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setExportOpen((v) => !v)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 font-medium"
+              type="button"
+              disabled={saving || plan.referral}
+              onClick={() => decide("approve_as_is")}
+              className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2.5 rounded-xl bg-lime-400 text-black font-bold disabled:opacity-40"
             >
-              <Download className="w-4 h-4" /> Export
-              <ChevronDown className="w-3.5 h-3.5" />
+              <Check className="w-4 h-4" /> Approve
             </button>
-            {exportOpen && (
-              <div className="absolute bottom-full mb-2 left-0 min-w-[180px] rounded-xl border border-white/10 bg-[#111] p-1 shadow-xl">
-                <button
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5"
-                  onClick={() => {
-                    exportCsv(plan);
-                    setExportOpen(false);
-                  }}
-                >
-                  CSV
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5"
-                  onClick={() => {
-                    downloadExport(id, programId, "xlsx");
-                    setExportOpen(false);
-                  }}
-                >
-                  Excel / Sheets
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2"
-                  onClick={() => {
-                    window.print();
-                    setExportOpen(false);
-                  }}
-                >
-                  <Printer className="w-3.5 h-3.5" /> Print / PDF
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={saveEdits}
+              className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2.5 rounded-xl bg-white/10 font-medium"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Save{dirty ? " *" : ""}
+            </button>
           </div>
-          <button
-            disabled={saving || !programId || program?.status !== "approved"}
-            onClick={async () => {
-              const share = await createShare(id, programId);
-              const url = `${window.location.origin}${share.url_path}`;
-              setShareUrl(url);
-              await navigator.clipboard.writeText(url);
-              setMessage("Share link copied");
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 font-medium disabled:opacity-40"
-          >
-            <Share2 className="w-4 h-4" /> Share
-          </button>
-          <button
-            disabled={saving}
-            onClick={() => decide("reject_session")}
-            className="ml-auto flex items-center gap-2 px-4 py-2.5 rounded-xl text-red-300 hover:bg-red-500/10"
-          >
-            <X className="w-4 h-4" /> Reject
-          </button>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setExportOpen((v) => !v)}
+                className="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl bg-white/10 font-medium"
+              >
+                <Download className="w-4 h-4" /> Export
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              {exportOpen && (
+                <div className="absolute bottom-full mb-2 left-0 min-w-[180px] rounded-xl border border-white/10 bg-[#111] p-1 shadow-xl z-10">
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 min-h-11 rounded-lg text-sm hover:bg-white/5"
+                    onClick={() => {
+                      exportCsv(plan);
+                      setExportOpen(false);
+                    }}
+                  >
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 min-h-11 rounded-lg text-sm hover:bg-white/5"
+                    onClick={() => {
+                      downloadExport(id, programId, "xlsx");
+                      setExportOpen(false);
+                    }}
+                  >
+                    Excel / Sheets
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 min-h-11 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2"
+                    onClick={() => {
+                      window.print();
+                      setExportOpen(false);
+                    }}
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Print / PDF
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              disabled={saving || !programId || program?.status !== "approved"}
+              onClick={async () => {
+                const share = await createShare(id, programId);
+                const url = `${window.location.origin}${share.url_path}`;
+                setShareUrl(url);
+                await navigator.clipboard.writeText(url);
+                setMessage("Share link copied");
+              }}
+              className="flex shrink-0 items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl bg-white/10 font-medium disabled:opacity-40"
+            >
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => decide("reject_session")}
+              className="ml-auto flex shrink-0 items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl text-red-300 hover:bg-red-500/10"
+            >
+              <X className="w-4 h-4" /> Reject
+            </button>
+          </div>
         </div>
         {shareUrl && (
           <p className="max-w-[1120px] mx-auto mt-2 text-[11px] text-zinc-500 break-all px-2">{shareUrl}</p>

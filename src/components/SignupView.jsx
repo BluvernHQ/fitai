@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { register, logout } from "../firebase/auth";
 import { registerCoach } from "../api/coach";
+import { BrandMark, FieldShell } from "./ui";
 
 export const SignupView = () => {
   const [name, setName] = useState("");
@@ -54,117 +55,99 @@ export const SignupView = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.8 }}
-      className="relative flex-1 w-full flex flex-col items-center justify-center px-4 py-10"
+      transition={{ duration: 0.7 }}
+      className="auth-stage relative flex-1 w-full flex flex-col items-center justify-center px-4 py-10"
       style={{
         paddingTop: "max(2.5rem, env(safe-area-inset-top))",
         paddingBottom: "max(2.5rem, env(safe-area-inset-bottom))",
       }}
     >
       <div className="w-full max-w-md">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group min-h-11 mb-8"
-        >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Back to Login</span>
+        <Link to="/" className="btn-ghost mb-6 -ml-1">
+          <ArrowLeft className="w-4 h-4" />
+          Back
         </Link>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8 text-left md:text-center"
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-8 text-center"
         >
-          <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3 block brand-font">
-            New Account
-          </span>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight mb-3 leading-[0.95]">
-            Join the <br /> <span className="text-lime-400">System.</span>
-          </h1>
-          <p className="text-zinc-400 text-base md:text-lg">
-            Create an account to start your journey.
+          <BrandMark size="lg" className="block mb-4" />
+          <p className="text-zinc-400 text-base md:text-lg leading-relaxed">
+            Create your coach workspace and start building smarter programs.
           </p>
         </motion.div>
 
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.12, duration: 0.5 }}
           onSubmit={handleSubmit}
           className="space-y-3"
         >
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
-            <input
-              type="text"
-              placeholder="Full Name"
-              required
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
-            />
-          </div>
-
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
-            <input
-              type="email"
-              placeholder="Email"
-              required
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
-            />
-          </div>
-
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
-            <input
-              type="password"
-              placeholder="Password"
-              required
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
-            />
-          </div>
-
-          <div className="group relative bg-white/3 border border-white/5 rounded-2xl p-1 transition-colors hover:bg-white/5 focus-within:bg-white/8 focus-within:border-white/10">
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              required
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
-            />
-          </div>
+          {[
+            { type: "text", placeholder: "Full name", value: name, set: setName, auto: "name" },
+            {
+              type: "email",
+              placeholder: "Email",
+              value: email,
+              set: setEmail,
+              auto: "email",
+              mode: "email",
+            },
+            {
+              type: "password",
+              placeholder: "Password",
+              value: password,
+              set: setPassword,
+              auto: "new-password",
+            },
+            {
+              type: "password",
+              placeholder: "Confirm password",
+              value: confirmPassword,
+              set: setConfirmPassword,
+              auto: "new-password",
+            },
+          ].map((field) => (
+            <FieldShell key={field.placeholder}>
+              <input
+                type={field.type}
+                placeholder={field.placeholder}
+                required
+                autoComplete={field.auto}
+                inputMode={field.mode}
+                value={field.value}
+                onChange={(e) => field.set(e.target.value)}
+                className="w-full h-14 bg-transparent px-5 text-base outline-none text-white placeholder:text-zinc-600 rounded-2xl"
+              />
+            </FieldShell>
+          ))}
 
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="flex items-center gap-2 text-red-500 bg-red-500/10 p-4 rounded-2xl"
+              className="flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl"
             >
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span className="text-sm font-medium">{error}</span>
             </motion.div>
           )}
 
-          <div className="pt-3">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative inline-flex items-center gap-3 min-h-14 px-8 py-4 bg-white text-black rounded-full hover:bg-lime-400 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-500 w-full justify-center"
+              className="group btn-primary w-full min-h-14 text-base !rounded-full"
             >
               {isLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  <span className="text-lg font-bold tracking-tight">Create Account</span>
+                  <span>Create account</span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}

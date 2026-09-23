@@ -26,8 +26,18 @@ export const QUALITY_KEYS = new Set([
   "symmetrical",
 ]);
 
-const LEFT_RE = /\b(left|l-side|l side|\bl\b)\b/i;
-const RIGHT_RE = /\b(right|r-side|r side|\br\b)\b/i;
+const META_KEYS = new Set([
+  "score",
+  "l_score",
+  "r_score",
+  "comment",
+  "left_comment",
+  "right_comment",
+  "clearing_pain",
+  "pain",
+  "left",
+  "right",
+]);
 
 const asInt = (value, fallback = 0) => {
   const n = Number(value);
@@ -50,26 +60,93 @@ export const isFaultKey = (key, specObs) => {
 
 const on = (section, key) => asInt(section?.[key]) > 0;
 
-const hasFaultInputs = (data = {}) => {
-  if (data.clearing_pain || data.pain === true) return true;
-  for (const [key, value] of Object.entries(data)) {
-    if (["score", "l_score", "r_score", "comment", "clearing_pain", "pain"].includes(key)) continue;
-    if (!value || typeof value !== "object") continue;
-    for (const [name, severity] of Object.entries(value)) {
-      if (asInt(severity) > 0 && isFaultKey(name)) return true;
+const emptySectionMap = (sections = []) => {
+  const out = {};
+  for (const section of sections) {
+    out[section.id] = {};
+    for (const obs of section.observations || []) {
+      out[section.id][obs.key] = 0;
     }
   }
-  return false;
+  return out;
+};
+
+/** Build / migrate movement row so asymmetrical screens always have left + right nests. */
+export const ensureSideStructure = (movement, data = {}) => {
+  const row = { ...data };
+  if (movement?.score_config?.type !== "asymmetrical") {
+    if (!row.sections_initialized) {
+      for (const section of movement?.sections || []) {
+        if (!row[section.id]) {
+          row[section.id] = {};
+          for (const obs of section.observations || []) row[section.id][obs.key] = 0;
+        }
+      }
+    }
+    return row;
+  }
+
+  const hasNested = row.left && typeof row.left === "object" && row.right && typeof row.right === "object";
+  if (!hasNested) {
+    const flat = {};
+    for (const section of movement.sections || []) {
+      if (row[section.id] && typeof row[section.id] === "object") {
+        flat[section.id] = { ...row[section.id] };
+      }
+    }
+    const left = Object.keys(flat).length ? flat : emptySectionMap(movement.sections);
+    const right = emptySectionMap(movement.sections);
+    row.left = left;
+    row.right = right;
+    for (const section of movement.sections || []) {
+      delete row[section.id];
+    }
+  } else {
+    for (const section of movement.sections || []) {
+      if (!row.left[section.id]) {
+        row.left[section.id] = {};
+        for (const obs of section.observations || []) row.left[section.id][obs.key] = 0;
+      }
+      if (!row.right[section.id]) {
+        row.right[section.id] = {};
+        for (const obs of section.observations || []) row.right[section.id][obs.key] = 0;
+      }
+    }
+  }
+  if (row.l_score == null) row.l_score = 2;
+  if (row.r_score == null) row.r_score = 2;
+  return row;
+};
+
+const walkObservationSections = (data = {}, visitor) => {
+  for (const [key, value] of Object.entries(data)) {
+    if (META_KEYS.has(key)) continue;
+    if (!value || typeof value !== "object") continue;
+    // nested left/right
+    if (key === "left" || key === "right") continue;
+    for (const [name, severity] of Object.entries(value)) {
+      if (typeof severity === "object") continue;
+      visitor(name, severity, key);
+    }
+  }
+};
+
+const hasFaultInputs = (data = {}) => {
+  if (data.clearing_pain || data.pain === true) return true;
+  if (data.pain && typeof data.pain === "object" && on(data.pain, "pain_reported")) return true;
+  let found = false;
+  walkObservationSections(data, (name, severity) => {
+    if (asInt(severity) > 0 && isFaultKey(name)) found = true;
+  });
+  return found;
 };
 
 const hasQualityInputs = (data = {}) => {
-  for (const [key, value] of Object.entries(data)) {
-    if (typeof value !== "object" || !value) continue;
-    for (const [name, severity] of Object.entries(value)) {
-      if (asInt(severity) > 0 && isQualityKey(name)) return true;
-    }
-  }
-  return false;
+  let found = false;
+  walkObservationSections(data, (name, severity) => {
+    if (asInt(severity) > 0 && isQualityKey(name)) found = true;
+  });
+  return found;
 };
 
 export const calculateScoreFromFaults = (testName, data = {}) => {
@@ -158,54 +235,88 @@ export const calculateScoreFromFaults = (testName, data = {}) => {
   return 3;
 };
 
-const commentSide = (text = "") => {
-  const left = LEFT_RE.test(text);
-  const right = RIGHT_RE.test(text);
-  if (left && !right) return "left";
-  if (right && !left) return "right";
-  return null;
-};
-
-const observationSide = (data = {}) => {
-  const blobs = Object.values(data).filter((v) => v && typeof v === "object");
-  const left = blobs.some((s) => on(s, "left_side_deficit"));
-  const right = blobs.some((s) => on(s, "right_side_deficit"));
-  if (left && !right) return "left";
-  if (right && !left) return "right";
-  return commentSide(data.comment);
+const scoreSideBundle = (testName, sideData = {}, shared = {}) => {
+  const bundle = {
+    ...sideData,
+    clearing_pain: shared.clearing_pain,
+    pain: shared.pain,
+  };
+  if (shared.clearing_pain || shared.pain === true || on(shared.pain || {}, "pain_reported")) {
+    return { score: 0, source: "pain" };
+  }
+  if (hasFaultInputs(bundle)) {
+    return { score: calculateScoreFromFaults(testName, bundle), source: "faults" };
+  }
+  if (hasQualityInputs(bundle)) {
+    return { score: 3, source: "quality" };
+  }
+  // Do not invent a 2 — coach must mark faults or quality
+  return { score: null, source: "unscored" };
 };
 
 export const scoreMovement = (testName, data = {}) => {
-  if (data.clearing_pain || data.pain === true || on(data.pain, "pain_reported")) {
-    return { score: 0, l_score: 0, r_score: 0, source: "pain" };
+  if (data.clearing_pain || data.pain === true || on(data.pain || {}, "pain_reported")) {
+    return { score: 0, l_score: 0, r_score: 0, source: "pain", complete: true };
   }
 
-  let calculated;
+  const hasSides =
+    data.left &&
+    typeof data.left === "object" &&
+    data.right &&
+    typeof data.right === "object";
+
+  if (hasSides) {
+    const shared = { clearing_pain: data.clearing_pain, pain: data.pain };
+    const left = scoreSideBundle(testName, data.left, shared);
+    const right = scoreSideBundle(testName, data.right, shared);
+    const bothScored = left.score != null && right.score != null;
+    const score = bothScored ? Math.min(left.score, right.score) : null;
+    const source =
+      left.source === "pain" || right.source === "pain"
+        ? "pain"
+        : left.source === "faults" || right.source === "faults"
+          ? "faults"
+          : left.source === "quality" || right.source === "quality"
+            ? "quality"
+            : "unscored";
+    return {
+      score,
+      l_score: left.score,
+      r_score: right.score,
+      source: bothScored ? source : "unscored",
+      complete: bothScored,
+      leftComplete: left.score != null,
+      rightComplete: right.score != null,
+    };
+  }
+
+  // Symmetrical / flat: no default 2
+  let calculated = null;
+  let source = "unscored";
   if (hasFaultInputs(data)) {
     calculated = calculateScoreFromFaults(testName, data);
+    source = "faults";
   } else if (hasQualityInputs(data)) {
     calculated = 3;
-  } else {
-    calculated = 2;
+    source = "quality";
   }
-
-  const side = observationSide(data);
-  let l_score = calculated;
-  let r_score = calculated;
-  if (side === "left") {
-    r_score = 3;
-  } else if (side === "right") {
-    l_score = 3;
-  }
-
-  const score = Math.min(l_score, r_score, calculated);
-  return { score, l_score, r_score, source: hasFaultInputs(data) ? "faults" : hasQualityInputs(data) ? "quality" : "unscored" };
+  return {
+    score: calculated,
+    l_score: calculated,
+    r_score: calculated,
+    source,
+    complete: calculated != null,
+    leftComplete: calculated != null,
+    rightComplete: calculated != null,
+  };
 };
+
+export const formatScore = (score) => (score == null ? "—" : String(score));
 
 export const stampComputedScores = (payload, movements = []) => {
   const next = { ...payload, use_manual_scores: false };
   for (const movement of movements) {
-    const current = payload[movement.id] || {};
+    const current = ensureSideStructure(movement, payload[movement.id] || {});
     const scored = scoreMovement(movement.id, current);
     const row = { ...current, score: scored.score };
     if (movement.score_config?.type === "asymmetrical") {
@@ -213,10 +324,19 @@ export const stampComputedScores = (payload, movements = []) => {
       row.r_score = scored.r_score;
     }
     if (typeof row.pain === "boolean") {
-      if (row.pain) row.score = 0;
+      if (row.pain) {
+        row.score = 0;
+        if ("l_score" in row) row.l_score = 0;
+        if ("r_score" in row) row.r_score = 0;
+      }
       delete row.pain;
     }
     next[movement.id] = row;
   }
   return next;
 };
+
+/** True when every movement has observations (both sides for asymmetrical). */
+export const fmsSessionComplete = (payload, movements = []) =>
+  movements.every((m) => scoreMovement(m.id, ensureSideStructure(m, payload[m.id] || {})).complete);
+

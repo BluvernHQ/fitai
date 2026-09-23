@@ -58,18 +58,18 @@ export const WorkoutDetail = () => {
   const plan = resolvePlan(workout);
 
   return (
-    <div className="min-h-screen bg-[#050505] pt-24 pb-20 px-4 md:px-6 max-w-[1120px] mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="page-shell page-shell-lg text-white pb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 md:mb-8">
         <button
           onClick={() => navigate(`/coach/student/${id}/progress`)}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+          className="btn-ghost -ml-1"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back to History</span>
         </button>
         <button
           onClick={() => navigate("/coach/dashboard")}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm"
+          className="flex items-center gap-2 min-h-11 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm"
         >
           <Home className="w-4 h-4" />
           Dashboard

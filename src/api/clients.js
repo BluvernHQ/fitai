@@ -1,4 +1,5 @@
 import { getIdToken } from "../firebase/auth";
+import { getAdminSessionToken } from "../lib/adminSession";
 
 const API_BASE = "/api";
 
@@ -42,6 +43,11 @@ export const apiFetch = async (path, options = {}) => {
     Authorization: `Bearer ${token}`,
     ...(options.headers || {}),
   };
+
+  const adminToken = getAdminSessionToken();
+  if (adminToken && String(path).startsWith("/admin")) {
+    headers["X-Admin-Session"] = adminToken;
+  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,

@@ -37,15 +37,15 @@ export const CoachInsights = () => {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-24 px-6 pb-16 max-w-4xl mx-auto">
+    <div className="page-shell page-shell-md text-white">
       <button
         onClick={() => navigate("/coach/dashboard")}
-        className="flex items-center gap-2 text-zinc-500 hover:text-white mb-8"
+        className="btn-ghost mb-6 -ml-1"
       >
         <ArrowLeft className="w-4 h-4" /> Dashboard
       </button>
-      <h1 className="text-3xl font-bold mb-2">Coach learning</h1>
-      <p className="text-zinc-400 mb-8">
+      <h1 className="display-title text-3xl md:text-4xl mb-2">Coach learning</h1>
+      <p className="text-zinc-400 mb-8 text-sm md:text-base leading-relaxed">
         {data?.disclaimer || "Taste never overrides safety, equipment, or level gates."}
       </p>
       {error && <p className="text-red-300">{error}</p>}

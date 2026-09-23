@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { fetchStudents } from "../api/student";
 import { StudentCard } from "./StudentCard";
 import { EnrollStudentModal } from "./EnrollStudentModal";
-import { Loader2, Users, UserPlus } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { PageShell, PageHeader, EmptyState, LoadingState, Button } from "./ui";
 
 export const StudentsDashboard = () => {
   const navigate = useNavigate();
@@ -36,104 +37,81 @@ export const StudentsDashboard = () => {
   };
 
   const handleAssess = (student) => {
-    navigate(`/coach/student/${student.id}/fms`, {
+    navigate(`/coach/student/${student.id}/assess`, {
       state: { studentName: student.name },
     });
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center px-4 py-16 min-h-[50vh]">
-        <Loader2 className="w-8 h-8 text-lime-400 animate-spin mb-4" />
-        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">
-          Syncing Roster...
-        </span>
-      </div>
-    );
+    return <LoadingState label="Syncing roster" />;
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center px-4 py-16 min-h-[50vh] text-center">
-        <span className="text-red-500 font-medium mb-2">{error}</span>
-        <button
-          onClick={() => window.location.reload()}
-          className="min-h-11 text-sm text-zinc-400 hover:text-white underline underline-offset-4"
-        >
-          Retry Connection
-        </button>
+      <div className="flex flex-col items-center justify-center px-4 py-16 min-h-[50vh] text-center gap-3">
+        <span className="text-red-400 font-medium">{error}</span>
+        <Button variant="ghost" onClick={() => window.location.reload()}>
+          Retry connection
+        </Button>
       </div>
     );
   }
 
   return (
     <>
-      <div className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-16">
+      <PageShell>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-6 md:mb-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between border-b border-white/5 pb-6"
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div>
-            <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-2 block brand-font">
-              Coach Dashboard
-            </span>
-            <h1 className="text-3xl md:text-5xl font-medium tracking-tight leading-[0.95]">
-              Active <span className="text-zinc-600">Roster</span>
-            </h1>
-            <p className="sm:hidden text-sm text-zinc-500 mt-2">
-              {students.length} {students.length === 1 ? "student" : "students"}
-            </p>
-          </div>
+          <PageHeader
+            eyebrow="Coach workspace"
+            title="Active"
+            accent="Roster"
+            description={`${students.length} athlete${students.length === 1 ? "" : "s"} ready for assessment and programming.`}
+            actions={
+              <>
+                <div className="hidden md:flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                  <Users className="w-4 h-4 text-lime-400" />
+                  <span className="text-sm font-semibold text-white tabular-nums">
+                    {students.length}
+                  </span>
+                </div>
+                <Button onClick={() => setIsEnrollOpen(true)} className="w-full sm:w-auto">
+                  <UserPlus className="w-4 h-4" />
+                  Enroll student
+                </Button>
+              </>
+            }
+          />
 
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/5">
-              <Users className="w-4 h-4 text-lime-400" />
-              <span className="text-sm font-medium text-white">
-                {students.length} Students
-              </span>
+          {students.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No athletes yet"
+              description="Enroll your first student to start screening and building programs."
+              action={
+                <Button onClick={() => setIsEnrollOpen(true)}>
+                  <UserPlus className="w-4 h-4" />
+                  Enroll first student
+                </Button>
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+              {students.map((student, i) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  index={i}
+                  onAssess={handleAssess}
+                />
+              ))}
             </div>
-
-            <button
-              onClick={() => setIsEnrollOpen(true)}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-12 px-5 py-3 rounded-full bg-lime-400 text-black text-sm font-bold hover:bg-lime-300 transition-colors"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Enroll Student</span>
-            </button>
-          </div>
+          )}
         </motion.div>
-
-        {students.length === 0 ? (
-          <div className="text-center py-14 md:py-20 px-4 bg-white/2 rounded-3xl border border-white/5 border-dashed">
-            <Users className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-zinc-400 mb-2">No Students yet</h3>
-            <p className="text-zinc-600 max-w-sm mx-auto mb-6 text-sm">
-              Your roster is currently empty. New students will appear here once they are
-              enrolled.
-            </p>
-            <button
-              onClick={() => setIsEnrollOpen(true)}
-              className="inline-flex items-center gap-2 min-h-12 px-6 py-2.5 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10"
-            >
-              <UserPlus className="w-4 h-4 text-lime-400" />
-              Enroll First Student
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-            {students.map((student, i) => (
-              <StudentCard
-                key={student.id}
-                student={student}
-                index={i}
-                onAssess={handleAssess}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      </PageShell>
 
       <EnrollStudentModal
         isOpen={isEnrollOpen}

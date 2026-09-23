@@ -10,7 +10,7 @@ const CellInput = ({ value, onChange, className = "", type = "text", placeholder
     onChange={(e) =>
       onChange(type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value)
     }
-    className={`w-full bg-transparent border-0 px-0 py-0.5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/5 rounded tabular-nums ${className}`}
+    className={`w-full bg-transparent border-0 px-0 py-1.5 text-base text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/5 rounded tabular-nums ${className}`}
   />
 );
 
@@ -129,7 +129,7 @@ function ExerciseRow({ item, index, circuit, editable, swaps, onPatch, onSwap })
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5"
+            className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5"
             aria-label="Show details"
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -140,7 +140,7 @@ function ExerciseRow({ item, index, circuit, editable, swaps, onPatch, onSwap })
       {open && (
         <div className="mt-3 pl-0 sm:pl-9 space-y-3">
           {editable && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
               <Field label="Role">
                 <CellInput
                   value={item.role || item.tag}
@@ -182,7 +182,7 @@ function ExerciseRow({ item, index, circuit, editable, swaps, onPatch, onSwap })
                 <Repeat className="w-3 h-3" /> Swap
               </span>
               <select
-                className="w-full max-w-md bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300"
+                className="w-full max-w-md min-h-11 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-base text-zinc-300"
                 defaultValue=""
                 onChange={(e) => {
                   const candidate = swaps.find((c) => c.exercise_id === e.target.value);

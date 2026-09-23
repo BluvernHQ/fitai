@@ -62,6 +62,32 @@ export const reviewProgram = async (studentId, programId, payload) => {
 
 export const getCoachInsights = async () => apiFetch("/me/insights");
 
+export const getMe = async () => apiFetch("/me");
+
+export const getModules = async () => apiFetch("/modules");
+
+export const unlockAdminSession = async (gateSecret) =>
+  apiFetch("/admin/session", {
+    method: "POST",
+    body: JSON.stringify({ gate_secret: gateSecret }),
+  });
+
+export const getAdminOverview = async () => apiFetch("/admin/overview");
+
+export const getAdminCoaches = async () => apiFetch("/admin/coaches");
+
+export const patchAdminCoach = async (coachId, payload) =>
+  apiFetch(`/admin/coaches/${coachId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const patchAdminModule = async (moduleId, payload) =>
+  apiFetch(`/admin/modules/${moduleId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
 export const getBlock = async (studentId, blockId) =>
   apiFetch(`/students/${studentId}/blocks/${blockId}`);
 
