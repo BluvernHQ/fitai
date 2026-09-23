@@ -1,0 +1,45 @@
+{
+  "id": "beighton",
+  "label": "Beighton Score",
+  "short_label": "Beighton",
+  "points": [
+    {
+      "key": "little_finger_rt",
+      "label": "Little finger RT"
+    },
+    {
+      "key": "little_finger_lt",
+      "label": "Little finger LT"
+    },
+    {
+      "key": "thumb_rt",
+      "label": "Thumb RT"
+    },
+    {
+      "key": "thumb_lt",
+      "label": "Thumb LT"
+    },
+    {
+      "key": "elbow_rt",
+      "label": "Elbow RT"
+    },
+    {
+      "key": "elbow_lt",
+      "label": "Elbow LT"
+    },
+    {
+      "key": "knee_rt",
+      "label": "Knee RT"
+    },
+    {
+      "key": "knee_lt",
+      "label": "Knee LT"
+    },
+    {
+      "key": "straight_leg",
+      "label": "Trunk / palm floor"
+    }
+  ],
+  "hypermobility_threshold_adult": 4,
+  "hypermobility_threshold_youth": 5
+}

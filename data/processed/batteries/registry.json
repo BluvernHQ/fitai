@@ -1,0 +1,46 @@
+{
+  "version": "v1",
+  "order": [
+    "breathing",
+    "beighton",
+    "fms",
+    "mcgill",
+    "bunkie",
+    "muscular_endurance"
+  ],
+  "default_selected": [
+    "fms"
+  ],
+  "batteries": [
+    {
+      "id": "breathing",
+      "label": "Breathing Screen",
+      "short_label": "Breathing"
+    },
+    {
+      "id": "beighton",
+      "label": "Beighton Score",
+      "short_label": "Beighton"
+    },
+    {
+      "id": "fms",
+      "label": "Functional Movement Screen",
+      "short_label": "FMS"
+    },
+    {
+      "id": "mcgill",
+      "label": "McGill Torso Endurance",
+      "short_label": "McGill"
+    },
+    {
+      "id": "bunkie",
+      "label": "Bunkie Test",
+      "short_label": "Bunkie"
+    },
+    {
+      "id": "muscular_endurance",
+      "label": "Muscular Endurance",
+      "short_label": "Endurance"
+    }
+  ]
+}

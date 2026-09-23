@@ -1,0 +1,36 @@
+{
+  "id": "breathing",
+  "label": "Breathing Screen",
+  "short_label": "Breathing",
+  "fields": [
+    {
+      "key": "bolt_seconds",
+      "label": "BOLT (FRC breath hold)",
+      "unit": "seconds",
+      "type": "number"
+    },
+    {
+      "key": "tlc_seconds",
+      "label": "TLC breath hold",
+      "unit": "seconds",
+      "type": "number"
+    },
+    {
+      "key": "comment",
+      "label": "Interpretation notes",
+      "type": "text"
+    }
+  ],
+  "bands": {
+    "bolt": {
+      "red_max": 34,
+      "yellow_max": 60,
+      "green_min": 61
+    },
+    "tlc": {
+      "red_max": 44,
+      "yellow_max": 90,
+      "green_min": 91
+    }
+  }
+}

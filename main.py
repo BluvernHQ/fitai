@@ -9,16 +9,21 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from pathlib import Path
 import uuid
 
 # ── IMPORTS ──
+from src.logic.assessment_fusion import analyze_assessment_session, normalize_session
 from src.logic.fms_analyzer import analyze_fms_profile
+from src.logic.load_calculator import estimate_1rm, load_tables, percent_1rm_for, pro_rata_maxes, rm_ladder_loads
+from src.logic.batteries import load_registry
 from src.logic.prescription import assemble_weekly_program, catalog_by_id, load_methodology
 from src.logic.periodization import apply_week_progression, mesocycle_envelope, template_for
 from src.logic.taste import insights_payload, plans_differ_selection
+from src.logic.modules import MODULE_CATALOG, CATALOG_BY_ID
 from src.logic.delivery import (
     athlete_dto,
     default_expiry,
@@ -43,8 +48,17 @@ from src.database import (
     CoachExercisePrior,
     TrainingBlock,
     ShareLink,
+    PlatformModule,
+    DATABASE_URL,
 )
-from src.auth import get_current_coach, get_db
+from src.auth import (
+    get_current_coach,
+    get_current_admin,
+    get_db,
+    mint_admin_session_token,
+    verify_admin_gate_secret,
+    admin_gate_configured,
+)
 from src.store.firestore_repo import firestore_enabled, mirror_athlete, mirror_coach, mirror_program
 
 # ────────────────────────────────────────────────
@@ -59,6 +73,10 @@ async def _ensure_schema():
         "ALTER TABLE program_drafts ADD COLUMN snapshot_immutable BOOLEAN DEFAULT 0",
         "ALTER TABLE preference_events ADD COLUMN event_id VARCHAR",
         "ALTER TABLE preference_events ADD COLUMN reason_code VARCHAR",
+        "ALTER TABLE coaches ADD COLUMN is_admin BOOLEAN DEFAULT 0",
+        "ALTER TABLE assessments ADD COLUMN assessment_kind VARCHAR DEFAULT 'baseline_session'",
+        "ALTER TABLE assessments ADD COLUMN selected_batteries JSON",
+        "ALTER TABLE assessments ADD COLUMN findings JSON",
     ]
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -69,10 +87,28 @@ async def _ensure_schema():
                 pass
 
 
+async def _seed_platform_modules(db: AsyncSession):
+    existing = (await db.execute(select(PlatformModule.module_id))).scalars().all()
+    known = set(existing)
+    for spec in MODULE_CATALOG:
+        if spec["id"] in known:
+            continue
+        db.add(
+            PlatformModule(
+                module_id=spec["id"],
+                enabled=bool(spec.get("default_enabled", True)),
+                config={},
+            )
+        )
+    await db.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting FitAI API")
     await _ensure_schema()
+    async with AsyncSessionLocal() as db:
+        await _seed_platform_modules(db)
     print("Schema ready")
     yield
 
@@ -310,15 +346,37 @@ class RSData(BaseModel):
     symmetry: RS_Symmetry = Field(default_factory=RS_Symmetry)
 
 class FMSProfileRequest(BaseModel):
+    """Legacy FMS-only body. Prefer AssessmentSessionRequest for modular batteries."""
     model_config = ConfigDict(extra="allow")
-    overhead_squat: OverheadSquatData
-    hurdle_step: HurdleStepData
-    inline_lunge: InlineLungeData
-    shoulder_mobility: ShoulderMobilityData
-    active_straight_leg_raise: ASLRData
-    trunk_stability_pushup: TSPData
-    rotary_stability: RSData
+    overhead_squat: Optional[Dict[str, Any]] = None
+    hurdle_step: Optional[Dict[str, Any]] = None
+    inline_lunge: Optional[Dict[str, Any]] = None
+    shoulder_mobility: Optional[Dict[str, Any]] = None
+    active_straight_leg_raise: Optional[Dict[str, Any]] = None
+    trunk_stability_pushup: Optional[Dict[str, Any]] = None
+    rotary_stability: Optional[Dict[str, Any]] = None
     use_manual_scores: bool = False
+    student_id: Optional[int] = None
+
+
+class AssessmentSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    student_id: Optional[int] = None
+    selected_batteries: Optional[List[str]] = None
+    batteries: Optional[Dict[str, Any]] = None
+    use_manual_scores: bool = False
+    session_notes: Optional[str] = None
+    athlete_context: Optional[Dict[str, Any]] = None
+
+
+class LoadEstimateRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    load_kg: float
+    reps: int
+    rpe: float = 10
+    anchor_lift: Optional[str] = "back_squat"
+    include_pro_rata: bool = True
+
 
 class CalculatedScores(BaseModel):
     overhead_squat: int
@@ -349,6 +407,19 @@ class StudentIn(BaseModel):
 
 class CoachIn(BaseModel):
     name: Optional[str] = None
+
+
+class ModulePatch(BaseModel):
+    enabled: Optional[bool] = None
+    config: Optional[Dict[str, Any]] = None
+
+
+class CoachAdminPatch(BaseModel):
+    is_admin: bool
+
+
+class AdminSessionIn(BaseModel):
+    gate_secret: str
 
 
 class ProgramFeedback(BaseModel):
@@ -516,6 +587,14 @@ async def _process_program_generation(
                 await db.execute(select(LiftMax).where(LiftMax.student_id == student.id))
             ).scalars().all()
             lift_maxes = {m.lift_key: m.one_rm for m in maxes}
+            full_data = {
+                **full_data,
+                "athlete_context": {
+                    **(full_data.get("athlete_context") or {}),
+                    "age": student.age,
+                    "gender": student.gender,
+                },
+            }
         priors = await _load_priors(coach.id, db) if coach else {}
         plan = assemble_weekly_program(
             full_data,
@@ -527,18 +606,28 @@ async def _process_program_generation(
         )
         plan = enrich_coach_notes(plan, (plan.get("analysis") or {}).get("comments"))
         plan["athlete_snapshot"] = _athlete_snapshot(student, lift_maxes)
-        analysis = plan.get("analysis") or analyze_fms_profile(full_data)
+        analysis = plan.get("analysis") or analyze_assessment_session(
+            full_data,
+            athlete_context={
+                "age": student.age if student else None,
+                "gender": student.gender if student else None,
+            },
+        )
         scores = analysis.get("effective_scores", {})
+        session = normalize_session(full_data)
 
         assessment = None
         program = None
         if student and coach:
             assessment = Assessment(
                 student_id=student.id,
+                assessment_kind=analysis.get("assessment_kind") or "baseline_session",
+                selected_batteries=session.get("selected_batteries") or analysis.get("selected_batteries") or [],
                 raw_json_data=full_data,
                 scores=scores,
                 comments=analysis.get("comments") or {},
                 needs=analysis.get("needs") or [],
+                findings=analysis.get("findings") or [],
                 total_score=analysis.get("total_score", 0),
                 status=analysis.get("status"),
             )
@@ -599,7 +688,155 @@ async def _process_program_generation(
 
 @app.get("/me")
 async def me(coach: Coach = Depends(get_current_coach)):
-    return {"id": coach.id, "name": coach.name, "email": coach.email, "firebase_uid": coach.firebase_uid}
+    return {
+        "id": coach.id,
+        "name": coach.name,
+        "email": coach.email,
+        "firebase_uid": coach.firebase_uid,
+        "is_admin": bool(coach.is_admin),
+    }
+
+
+def _module_out(row: PlatformModule) -> dict:
+    spec = CATALOG_BY_ID.get(row.module_id, {})
+    return {
+        "id": row.module_id,
+        "name": spec.get("name", row.module_id),
+        "description": spec.get("description", ""),
+        "category": spec.get("category", "platform"),
+        "scope": spec.get("scope", "coach"),
+        "version": spec.get("version", "1.0.0"),
+        "enabled": bool(row.enabled),
+        "config": row.config or {},
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+@app.get("/modules")
+async def list_modules(coach: Coach = Depends(get_current_coach), db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(PlatformModule).order_by(PlatformModule.module_id.asc()))).scalars().all()
+    modules = [_module_out(r) for r in rows]
+    if coach.is_admin:
+        return {"modules": modules, "is_admin": True}
+    return {
+        "modules": [m for m in modules if m["scope"] != "admin" and m["enabled"]],
+        "is_admin": False,
+    }
+
+
+@app.post("/admin/session")
+async def create_admin_session(payload: AdminSessionIn, coach: Coach = Depends(get_current_coach)):
+    """Unlock admin panel: Firebase coach auth + ADMIN_GATE_SECRET + is_admin."""
+    verify_admin_gate_secret(payload.gate_secret)
+    if not coach.is_admin:
+        raise HTTPException(status_code=403, detail="This account is not an admin")
+    token, expires_at = mint_admin_session_token(coach.id)
+    return {
+        "admin_token": token,
+        "expires_at": expires_at,
+        "coach": {
+            "id": coach.id,
+            "name": coach.name,
+            "email": coach.email,
+            "is_admin": True,
+        },
+        "gate_configured": admin_gate_configured(),
+    }
+
+
+@app.get("/admin/overview")
+async def admin_overview(admin: Coach = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    coaches = (await db.execute(select(func.count()).select_from(Coach))).scalar_one()
+    students = (await db.execute(select(func.count()).select_from(Student))).scalar_one()
+    assessments = (await db.execute(select(func.count()).select_from(Assessment))).scalar_one()
+    programs = (await db.execute(select(func.count()).select_from(ProgramDraft))).scalar_one()
+    blocks = (await db.execute(select(func.count()).select_from(TrainingBlock))).scalar_one()
+    enabled_modules = (
+        await db.execute(select(func.count()).select_from(PlatformModule).where(PlatformModule.enabled.is_(True)))
+    ).scalar_one()
+    groq = bool(os.getenv("GROQ_API_KEY"))
+    return {
+        "coaches": coaches,
+        "students": students,
+        "assessments": assessments,
+        "programs": programs,
+        "blocks": blocks,
+        "enabled_modules": enabled_modules,
+        "integrations": {
+            "groq": groq,
+            "firestore_mirror": firestore_enabled(),
+            "database": DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else "local",
+        },
+    }
+
+
+@app.get("/admin/coaches")
+async def admin_coaches(admin: Coach = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(Coach).order_by(Coach.created_at.desc()))).scalars().all()
+    out = []
+    for coach in rows:
+        student_count = (
+            await db.execute(select(func.count()).select_from(Student).where(Student.coach_id == coach.id))
+        ).scalar_one()
+        out.append(
+            {
+                "id": coach.id,
+                "name": coach.name,
+                "email": coach.email,
+                "is_admin": bool(coach.is_admin),
+                "student_count": student_count,
+                "created_at": coach.created_at.isoformat() if coach.created_at else None,
+            }
+        )
+    return out
+
+
+@app.patch("/admin/coaches/{coach_id}")
+async def admin_patch_coach(
+    coach_id: int,
+    payload: CoachAdminPatch,
+    admin: Coach = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    row = (await db.execute(select(Coach).where(Coach.id == coach_id))).scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Coach not found")
+    if row.id == admin.id and not payload.is_admin:
+        raise HTTPException(status_code=400, detail="Cannot remove your own admin access")
+    row.is_admin = payload.is_admin
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "is_admin": bool(row.is_admin)}
+
+
+@app.patch("/admin/modules/{module_id}")
+async def admin_patch_module(
+    module_id: str,
+    payload: ModulePatch,
+    admin: Coach = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if module_id not in CATALOG_BY_ID:
+        raise HTTPException(status_code=404, detail="Unknown module")
+    row = (
+        await db.execute(select(PlatformModule).where(PlatformModule.module_id == module_id))
+    ).scalar_one_or_none()
+    if not row:
+        spec = CATALOG_BY_ID[module_id]
+        row = PlatformModule(
+            module_id=module_id,
+            enabled=bool(spec.get("default_enabled", True)),
+            config={},
+        )
+        db.add(row)
+        await db.flush()
+    if payload.enabled is not None:
+        row.enabled = payload.enabled
+    if payload.config is not None:
+        row.config = payload.config
+    await db.commit()
+    await db.refresh(row)
+    return _module_out(row)
 
 
 @app.get("/me/insights")
@@ -757,6 +994,9 @@ async def list_assessments(student_id: int, coach: Coach = Depends(get_current_c
             "scores": a.scores,
             "comments": a.comments,
             "needs": a.needs,
+            "findings": a.findings,
+            "selected_batteries": a.selected_batteries,
+            "assessment_kind": a.assessment_kind,
             "total_score": a.total_score,
             "status": a.status,
         }
@@ -766,22 +1006,58 @@ async def list_assessments(student_id: int, coach: Coach = Depends(get_current_c
 
 @app.post("/students/{student_id}/assessments")
 async def save_assessment(student_id: int, payload: Dict[str, Any], coach: Coach = Depends(get_current_coach), db: AsyncSession = Depends(get_db)):
-    await _owned_student(student_id, coach, db)
+    student = await _owned_student(student_id, coach, db)
     profile = payload.get("raw_fms_inputs") or payload
-    analysis = analyze_fms_profile(profile, use_manual_scores=profile.get("use_manual_scores", False))
+    analysis = analyze_assessment_session(
+        profile,
+        use_manual_scores=profile.get("use_manual_scores", False),
+        athlete_context={"age": student.age, "gender": student.gender},
+    )
+    session = normalize_session(profile)
     row = Assessment(
         student_id=int(student_id),
+        assessment_kind=analysis.get("assessment_kind") or "baseline_session",
+        selected_batteries=session.get("selected_batteries") or [],
         raw_json_data=profile,
-        scores=payload.get("calculated_scores") or analysis["effective_scores"],
+        scores=payload.get("calculated_scores") or analysis.get("effective_scores"),
         comments=analysis.get("comments") or {},
         needs=analysis.get("needs") or [],
+        findings=analysis.get("findings") or [],
         total_score=analysis.get("total_score", 0),
         status=analysis.get("status"),
     )
     db.add(row)
     await db.commit()
     await db.refresh(row)
-    return {"id": row.id, "assessment_id": row.id, "scores": row.scores, "status": row.status}
+    return {
+        "id": row.id,
+        "assessment_id": row.id,
+        "scores": row.scores,
+        "status": row.status,
+        "findings": row.findings,
+        "selected_batteries": row.selected_batteries,
+        "battery_results": analysis.get("battery_results"),
+    }
+
+
+@app.get("/assessment/batteries")
+async def list_assessment_batteries(coach: Coach = Depends(get_current_coach)):
+    return load_registry()
+
+
+@app.post("/tools/estimate-1rm")
+async def tools_estimate_1rm(body: LoadEstimateRequest, coach: Coach = Depends(get_current_coach)):
+    estimated = estimate_1rm(body.load_kg, body.reps, body.rpe)
+    out = {**estimated, "rm_ladder": rm_ladder_loads(estimated["estimated_1rm"])}
+    if body.include_pro_rata:
+        out["pro_rata"] = pro_rata_maxes(estimated["estimated_1rm"], body.anchor_lift or "back_squat")
+    return out
+
+
+@app.get("/tools/load-tables")
+async def tools_load_tables(coach: Coach = Depends(get_current_coach)):
+    return load_tables()
+
 
 
 @app.get("/students/{student_id}/workouts")
@@ -926,7 +1202,7 @@ async def patch_workout(
 @app.post("/generate-workout")
 @app.post("/generate-program")
 async def generate_workout(
-    profile: FMSProfileRequest,
+    profile: AssessmentSessionRequest,
     db: AsyncSession = Depends(get_db),
     coach: Coach = Depends(get_current_coach),
 ):
@@ -935,6 +1211,10 @@ async def generate_workout(
     student_id = full_data.get("student_id")
     if student_id:
         student = await _owned_student(int(student_id), coach, db)
+        full_data.setdefault(
+            "athlete_context",
+            {"age": student.age, "gender": student.gender},
+        )
     return await _process_program_generation(full_data, db, coach, student)
 
 

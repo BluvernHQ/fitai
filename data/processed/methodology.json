@@ -181,19 +181,32 @@
   "recovery_presets": {
     "active_recovery": {
       "title": "Active recovery",
-      "notes": "Easy walk or bike plus mobility. No loaded work."
+      "notes": "Easy walk or bike plus mobility. No loaded work.",
+      "activities": [
+        { "name": "Easy walk or bike", "detail": "20–40 min zone 1", "role": "cardio" },
+        { "name": "Mobility flow", "detail": "10–15 min", "role": "mobility" },
+        { "name": "Soft tissue (optional)", "detail": "5–10 min targeted", "role": "recovery" }
+      ]
     },
     "passive_recovery": {
       "title": "Passive recovery",
-      "notes": "Off feet. Soft tissue optional. Sleep and hydration."
+      "notes": "Off feet. Soft tissue optional. Sleep and hydration.",
+      "activities": [
+        { "name": "Soft tissue (optional)", "detail": "5–10 min", "role": "recovery" },
+        { "name": "Sleep & hydration focus", "detail": "Prioritize recovery", "role": "recovery" }
+      ]
     },
     "rest": {
       "title": "Full rest",
-      "notes": "No training."
+      "notes": "No training.",
+      "activities": []
     },
     "deload": {
       "title": "Deload",
-      "notes": "Cut volume. Technique and mobility only."
+      "notes": "Cut volume. Technique and mobility only.",
+      "activities": [
+        { "name": "Technique / mobility", "detail": "Low volume only", "role": "mobility" }
+      ]
     }
   },
   "lift_key_by_pattern": {

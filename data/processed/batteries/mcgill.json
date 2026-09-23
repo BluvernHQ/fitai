@@ -1,0 +1,38 @@
+{
+  "id": "mcgill",
+  "label": "McGill Torso Endurance",
+  "short_label": "McGill",
+  "fields": [
+    {
+      "key": "flexor_seconds",
+      "label": "Trunk flexor",
+      "unit": "seconds"
+    },
+    {
+      "key": "lateral_right_seconds",
+      "label": "Lateral (R)",
+      "unit": "seconds"
+    },
+    {
+      "key": "lateral_left_seconds",
+      "label": "Lateral (L)",
+      "unit": "seconds"
+    },
+    {
+      "key": "extensor_seconds",
+      "label": "Trunk extensor",
+      "unit": "seconds"
+    },
+    {
+      "key": "comment",
+      "label": "Comments",
+      "type": "text"
+    }
+  ],
+  "ratios": {
+    "flexion_extension_max": 1.0,
+    "bridge_symmetry_min": 0.95,
+    "bridge_symmetry_max": 1.05,
+    "side_extension_max": 0.75
+  }
+}

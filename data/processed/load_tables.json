@@ -1,0 +1,718 @@
+{
+  "version": "v1",
+  "source": "FITNESS AI (TEST BATTERY & 1 RM CALCULATOR).xlsx",
+  "anchor_lift": "back_squat",
+  "reps_rpe_percent": [
+    {
+      "reps": 1,
+      "rpe": 10.0,
+      "percent_1rm": 1.0
+    },
+    {
+      "reps": 1,
+      "rpe": 9.5,
+      "percent_1rm": 0.978
+    },
+    {
+      "reps": 1,
+      "rpe": 9.0,
+      "percent_1rm": 0.955
+    },
+    {
+      "reps": 1,
+      "rpe": 8.5,
+      "percent_1rm": 0.939
+    },
+    {
+      "reps": 1,
+      "rpe": 8.0,
+      "percent_1rm": 0.922
+    },
+    {
+      "reps": 1,
+      "rpe": 7.5,
+      "percent_1rm": 0.907
+    },
+    {
+      "reps": 1,
+      "rpe": 7.0,
+      "percent_1rm": 0.892
+    },
+    {
+      "reps": 1,
+      "rpe": 6.5,
+      "percent_1rm": 0.878
+    },
+    {
+      "reps": 1,
+      "rpe": 6.0,
+      "percent_1rm": 0.863
+    },
+    {
+      "reps": 2,
+      "rpe": 10.0,
+      "percent_1rm": 0.955
+    },
+    {
+      "reps": 2,
+      "rpe": 9.5,
+      "percent_1rm": 0.939
+    },
+    {
+      "reps": 2,
+      "rpe": 9.0,
+      "percent_1rm": 0.922
+    },
+    {
+      "reps": 2,
+      "rpe": 8.5,
+      "percent_1rm": 0.907
+    },
+    {
+      "reps": 2,
+      "rpe": 8.0,
+      "percent_1rm": 0.892
+    },
+    {
+      "reps": 2,
+      "rpe": 7.5,
+      "percent_1rm": 0.878
+    },
+    {
+      "reps": 2,
+      "rpe": 7.0,
+      "percent_1rm": 0.863
+    },
+    {
+      "reps": 2,
+      "rpe": 6.5,
+      "percent_1rm": 0.85
+    },
+    {
+      "reps": 2,
+      "rpe": 6.0,
+      "percent_1rm": 0.837
+    },
+    {
+      "reps": 3,
+      "rpe": 10.0,
+      "percent_1rm": 0.922
+    },
+    {
+      "reps": 3,
+      "rpe": 9.5,
+      "percent_1rm": 0.907
+    },
+    {
+      "reps": 3,
+      "rpe": 9.0,
+      "percent_1rm": 0.892
+    },
+    {
+      "reps": 3,
+      "rpe": 8.5,
+      "percent_1rm": 0.878
+    },
+    {
+      "reps": 3,
+      "rpe": 8.0,
+      "percent_1rm": 0.863
+    },
+    {
+      "reps": 3,
+      "rpe": 7.5,
+      "percent_1rm": 0.85
+    },
+    {
+      "reps": 3,
+      "rpe": 7.0,
+      "percent_1rm": 0.837
+    },
+    {
+      "reps": 3,
+      "rpe": 6.5,
+      "percent_1rm": 0.824
+    },
+    {
+      "reps": 3,
+      "rpe": 6.0,
+      "percent_1rm": 0.811
+    },
+    {
+      "reps": 4,
+      "rpe": 10.0,
+      "percent_1rm": 0.892
+    },
+    {
+      "reps": 4,
+      "rpe": 9.5,
+      "percent_1rm": 0.878
+    },
+    {
+      "reps": 4,
+      "rpe": 9.0,
+      "percent_1rm": 0.863
+    },
+    {
+      "reps": 4,
+      "rpe": 8.5,
+      "percent_1rm": 0.85
+    },
+    {
+      "reps": 4,
+      "rpe": 8.0,
+      "percent_1rm": 0.837
+    },
+    {
+      "reps": 4,
+      "rpe": 7.5,
+      "percent_1rm": 0.824
+    },
+    {
+      "reps": 4,
+      "rpe": 7.0,
+      "percent_1rm": 0.811
+    },
+    {
+      "reps": 4,
+      "rpe": 6.5,
+      "percent_1rm": 0.799
+    },
+    {
+      "reps": 4,
+      "rpe": 6.0,
+      "percent_1rm": 0.786
+    },
+    {
+      "reps": 5,
+      "rpe": 10.0,
+      "percent_1rm": 0.863
+    },
+    {
+      "reps": 5,
+      "rpe": 9.5,
+      "percent_1rm": 0.85
+    },
+    {
+      "reps": 5,
+      "rpe": 9.0,
+      "percent_1rm": 0.837
+    },
+    {
+      "reps": 5,
+      "rpe": 8.5,
+      "percent_1rm": 0.824
+    },
+    {
+      "reps": 5,
+      "rpe": 8.0,
+      "percent_1rm": 0.811
+    },
+    {
+      "reps": 5,
+      "rpe": 7.5,
+      "percent_1rm": 0.799
+    },
+    {
+      "reps": 5,
+      "rpe": 7.0,
+      "percent_1rm": 0.786
+    },
+    {
+      "reps": 5,
+      "rpe": 6.5,
+      "percent_1rm": 0.774
+    },
+    {
+      "reps": 5,
+      "rpe": 6.0,
+      "percent_1rm": 0.762
+    },
+    {
+      "reps": 6,
+      "rpe": 10.0,
+      "percent_1rm": 0.837
+    },
+    {
+      "reps": 6,
+      "rpe": 9.5,
+      "percent_1rm": 0.824
+    },
+    {
+      "reps": 6,
+      "rpe": 9.0,
+      "percent_1rm": 0.811
+    },
+    {
+      "reps": 6,
+      "rpe": 8.5,
+      "percent_1rm": 0.797
+    },
+    {
+      "reps": 6,
+      "rpe": 8.0,
+      "percent_1rm": 0.786
+    },
+    {
+      "reps": 6,
+      "rpe": 7.5,
+      "percent_1rm": 0.774
+    },
+    {
+      "reps": 6,
+      "rpe": 7.0,
+      "percent_1rm": 0.762
+    },
+    {
+      "reps": 6,
+      "rpe": 6.5,
+      "percent_1rm": 0.751
+    },
+    {
+      "reps": 6,
+      "rpe": 6.0,
+      "percent_1rm": 0.739
+    },
+    {
+      "reps": 7,
+      "rpe": 10.0,
+      "percent_1rm": 0.811
+    },
+    {
+      "reps": 7,
+      "rpe": 9.5,
+      "percent_1rm": 0.799
+    },
+    {
+      "reps": 7,
+      "rpe": 9.0,
+      "percent_1rm": 0.786
+    },
+    {
+      "reps": 7,
+      "rpe": 8.5,
+      "percent_1rm": 0.774
+    },
+    {
+      "reps": 7,
+      "rpe": 8.0,
+      "percent_1rm": 0.762
+    },
+    {
+      "reps": 7,
+      "rpe": 7.5,
+      "percent_1rm": 0.751
+    },
+    {
+      "reps": 7,
+      "rpe": 7.0,
+      "percent_1rm": 0.739
+    },
+    {
+      "reps": 7,
+      "rpe": 6.5,
+      "percent_1rm": 0.723
+    },
+    {
+      "reps": 7,
+      "rpe": 6.0,
+      "percent_1rm": 0.707
+    },
+    {
+      "reps": 8,
+      "rpe": 10.0,
+      "percent_1rm": 0.786
+    },
+    {
+      "reps": 8,
+      "rpe": 9.5,
+      "percent_1rm": 0.774
+    },
+    {
+      "reps": 8,
+      "rpe": 9.0,
+      "percent_1rm": 0.762
+    },
+    {
+      "reps": 8,
+      "rpe": 8.5,
+      "percent_1rm": 0.751
+    },
+    {
+      "reps": 8,
+      "rpe": 8.0,
+      "percent_1rm": 0.739
+    },
+    {
+      "reps": 8,
+      "rpe": 7.5,
+      "percent_1rm": 0.723
+    },
+    {
+      "reps": 8,
+      "rpe": 7.0,
+      "percent_1rm": 0.707
+    },
+    {
+      "reps": 8,
+      "rpe": 6.5,
+      "percent_1rm": 0.694
+    },
+    {
+      "reps": 8,
+      "rpe": 6.0,
+      "percent_1rm": 0.68
+    },
+    {
+      "reps": 9,
+      "rpe": 10.0,
+      "percent_1rm": 0.762
+    },
+    {
+      "reps": 9,
+      "rpe": 9.5,
+      "percent_1rm": 0.751
+    },
+    {
+      "reps": 9,
+      "rpe": 9.0,
+      "percent_1rm": 0.739
+    },
+    {
+      "reps": 9,
+      "rpe": 8.5,
+      "percent_1rm": 0.723
+    },
+    {
+      "reps": 9,
+      "rpe": 8.0,
+      "percent_1rm": 0.707
+    },
+    {
+      "reps": 9,
+      "rpe": 7.5,
+      "percent_1rm": 0.694
+    },
+    {
+      "reps": 9,
+      "rpe": 7.0,
+      "percent_1rm": 0.68
+    },
+    {
+      "reps": 9,
+      "rpe": 6.5,
+      "percent_1rm": 0.667
+    },
+    {
+      "reps": 9,
+      "rpe": 6.0,
+      "percent_1rm": 0.653
+    },
+    {
+      "reps": 10,
+      "rpe": 10.0,
+      "percent_1rm": 0.739
+    },
+    {
+      "reps": 10,
+      "rpe": 9.5,
+      "percent_1rm": 0.723
+    },
+    {
+      "reps": 10,
+      "rpe": 9.0,
+      "percent_1rm": 0.707
+    },
+    {
+      "reps": 10,
+      "rpe": 8.5,
+      "percent_1rm": 0.694
+    },
+    {
+      "reps": 10,
+      "rpe": 8.0,
+      "percent_1rm": 0.68
+    },
+    {
+      "reps": 10,
+      "rpe": 7.5,
+      "percent_1rm": 0.667
+    },
+    {
+      "reps": 10,
+      "rpe": 7.0,
+      "percent_1rm": 0.653
+    },
+    {
+      "reps": 10,
+      "rpe": 6.5,
+      "percent_1rm": 0.64
+    },
+    {
+      "reps": 10,
+      "rpe": 6.0,
+      "percent_1rm": 0.626
+    },
+    {
+      "reps": 11,
+      "rpe": 10.0,
+      "percent_1rm": 0.707
+    },
+    {
+      "reps": 11,
+      "rpe": 9.5,
+      "percent_1rm": 0.694
+    },
+    {
+      "reps": 11,
+      "rpe": 9.0,
+      "percent_1rm": 0.68
+    },
+    {
+      "reps": 11,
+      "rpe": 8.5,
+      "percent_1rm": 0.667
+    },
+    {
+      "reps": 11,
+      "rpe": 8.0,
+      "percent_1rm": 0.653
+    },
+    {
+      "reps": 11,
+      "rpe": 7.5,
+      "percent_1rm": 0.64
+    },
+    {
+      "reps": 11,
+      "rpe": 7.0,
+      "percent_1rm": 0.626
+    },
+    {
+      "reps": 11,
+      "rpe": 6.5,
+      "percent_1rm": 0.613
+    },
+    {
+      "reps": 11,
+      "rpe": 6.0,
+      "percent_1rm": 0.599
+    },
+    {
+      "reps": 12,
+      "rpe": 10.0,
+      "percent_1rm": 0.68
+    },
+    {
+      "reps": 12,
+      "rpe": 9.5,
+      "percent_1rm": 0.667
+    },
+    {
+      "reps": 12,
+      "rpe": 9.0,
+      "percent_1rm": 0.653
+    },
+    {
+      "reps": 12,
+      "rpe": 8.5,
+      "percent_1rm": 0.64
+    },
+    {
+      "reps": 12,
+      "rpe": 8.0,
+      "percent_1rm": 0.626
+    },
+    {
+      "reps": 12,
+      "rpe": 7.5,
+      "percent_1rm": 0.613
+    },
+    {
+      "reps": 12,
+      "rpe": 7.0,
+      "percent_1rm": 0.599
+    },
+    {
+      "reps": 12,
+      "rpe": 6.5,
+      "percent_1rm": 0.586
+    },
+    {
+      "reps": 12,
+      "rpe": 6.0,
+      "percent_1rm": 0.574
+    }
+  ],
+  "rm_ladder": [
+    {
+      "rm": 1,
+      "percent_1rm": 1.0
+    },
+    {
+      "rm": 2,
+      "percent_1rm": 0.96
+    },
+    {
+      "rm": 3,
+      "percent_1rm": 0.93
+    },
+    {
+      "rm": 4,
+      "percent_1rm": 0.9
+    },
+    {
+      "rm": 5,
+      "percent_1rm": 0.88
+    },
+    {
+      "rm": 6,
+      "percent_1rm": 0.86
+    },
+    {
+      "rm": 7,
+      "percent_1rm": 0.83
+    },
+    {
+      "rm": 8,
+      "percent_1rm": 0.81
+    },
+    {
+      "rm": 9,
+      "percent_1rm": 0.79
+    },
+    {
+      "rm": 10,
+      "percent_1rm": 0.77
+    }
+  ],
+  "strength_qualities": [
+    {
+      "id": "max_strength",
+      "label": "Max Strength",
+      "rep_range": [
+        1,
+        3
+      ],
+      "percent_range": [
+        0.85,
+        1.0
+      ]
+    },
+    {
+      "id": "strength_speed",
+      "label": "Strength-Speed",
+      "rep_range": [
+        2,
+        5
+      ],
+      "percent_range": [
+        0.6,
+        0.85
+      ]
+    },
+    {
+      "id": "speed_strength",
+      "label": "Speed-Strength",
+      "rep_range": [
+        2,
+        6
+      ],
+      "percent_range": [
+        0.4,
+        0.6
+      ]
+    },
+    {
+      "id": "reactive_strength",
+      "label": "Reactive Strength",
+      "rep_range": [
+        2,
+        8
+      ],
+      "percent_range": [
+        0.2,
+        0.4
+      ]
+    },
+    {
+      "id": "speed",
+      "label": "Speed",
+      "rep_range": [
+        2,
+        8
+      ],
+      "percent_range": [
+        0.0,
+        0.2
+      ]
+    }
+  ],
+  "pro_rata_from_back_squat": {
+    "back_squat": 1.0,
+    "front_squat": 0.85,
+    "box_squat": 1.16,
+    "deadlift": 0.9,
+    "sumo_deadlift": 1.2,
+    "hex_bar_deadlift": 1.29,
+    "bench_press": 0.75,
+    "floor_press": 0.6375,
+    "strict_press": 0.504,
+    "push_press": 0.6375,
+    "jerk": 0.84,
+    "clean": 0.816,
+    "power_clean": 0.68,
+    "snatch": 0.6528,
+    "power_snatch": 0.54,
+    "muscle_snatch": 0.351,
+    "clean_deadlift": 1.0,
+    "snatch_deadlift": 0.9,
+    "bb_reverse_curl": 0.2625,
+    "cg_bench_press": 0.675,
+    "incline_bench_press": 0.6,
+    "military_press": 0.45,
+    "preacher_curl": 0.3,
+    "bench_pull_bb": 0.525,
+    "db_chest_press": 0.3,
+    "db_row": 0.32,
+    "bent_bb_row": 0.66,
+    "row": 0.66,
+    "rdl_bb": 0.925,
+    "good_mornings": 0.675,
+    "hip_thrust": 1.0,
+    "oh_squat": 0.66,
+    "rdl_db": 0.28,
+    "forward_lunge": 0.64,
+    "reverse_lunge": 0.74,
+    "incline_db_press": 0.3,
+    "kb_squat": 0.32,
+    "db_shoulder_press": 0.24,
+    "zercher_squat": 0.84,
+    "bb_front_raise": 0.28,
+    "db_lateral_raise": 0.12,
+    "db_curl": 0.1725,
+    "bb_curl": 0.36,
+    "pendlay_row": 0.7,
+    "split_squat": 0.67,
+    "sumo_squat": 0.88,
+    "landmine_press": 0.415,
+    "db_snatch": 0.282,
+    "db_rfess": 0.224,
+    "landmine_squat": 0.76,
+    "behind_neck_press": 0.485,
+    "db_squat": 0.257,
+    "z_press": 0.44,
+    "renegade_row": 0.22,
+    "zottman_curl": 0.173,
+    "zercher_deadlift": 0.789,
+    "sl_deadlift_bb": 0.4,
+    "bb_shrug": 1.02,
+    "clean_pull": 0.697,
+    "db_shrug": 0.36,
+    "upright_row": 0.511,
+    "arnold_press": 0.193,
+    "db_pullover": 0.2711,
+    "clean_high_pull": 0.6975,
+    "bent_db_row": 0.257
+  }
+}

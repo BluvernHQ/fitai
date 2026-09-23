@@ -68,7 +68,7 @@ def athlete_dto(plan: dict) -> dict:
         "referral": plan.get("referral", False),
         "days": days,
         "calendar": [
-            {k: cell.get(k) for k in ("weekday", "kind", "tone", "label", "day", "title", "notes", "done")}
+            {k: cell.get(k) for k in ("weekday", "kind", "tone", "label", "day", "title", "notes", "activities", "done")}
             for cell in (plan.get("calendar") or [])
         ],
         "ui": plan.get("ui") or {},

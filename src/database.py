@@ -28,6 +28,7 @@ class Coach(Base):
     firebase_uid = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     students = relationship("Student", back_populates="coach")
@@ -84,10 +85,13 @@ class Assessment(Base):
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    assessment_kind = Column(String, default="baseline_session")
+    selected_batteries = Column(JSON, default=list)
     raw_json_data = Column(JSON)
     scores = Column(JSON)
     comments = Column(JSON)
     needs = Column(JSON)
+    findings = Column(JSON)
     total_score = Column(Integer)
     status = Column(String)
 
@@ -156,6 +160,16 @@ class PreferenceEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     event_id = Column(String, nullable=True, index=True)
     reason_code = Column(String, nullable=True)
+
+
+class PlatformModule(Base):
+    __tablename__ = "platform_modules"
+
+    id = Column(Integer, primary_key=True)
+    module_id = Column(String, unique=True, nullable=False, index=True)
+    enabled = Column(Boolean, default=True)
+    config = Column(JSON, default=dict)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class CoachExercisePrior(Base):

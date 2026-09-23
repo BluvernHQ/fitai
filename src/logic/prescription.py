@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.logic.catalog_enrich import enrich_catalog, is_jump_or_plyo, is_overhead_exercise
-from src.logic.fms_analyzer import analyze_fms_profile
+from src.logic.assessment_fusion import analyze_assessment_session
 from src.logic.needs_engine import build_need_bundle
 from src.logic.periodization import stamp_week_one
 from src.logic.taste import prior_contribution
@@ -868,6 +868,7 @@ def _build_calendar(days: list[dict], days_per_week: int, methodology: dict, ana
                 "day": None,
                 "title": preset.get("title"),
                 "notes": notes,
+                "activities": list(preset.get("activities") or []),
                 "done": False,
             })
     return calendar
@@ -897,7 +898,11 @@ def assemble_weekly_program(
     use_manual_scores: bool = False,
     equipment: Optional[list] = None,
 ) -> dict:
-    analysis = analyze_fms_profile(profile, use_manual_scores=use_manual_scores)
+    analysis = analyze_assessment_session(
+        profile,
+        use_manual_scores=use_manual_scores,
+        athlete_context=(profile or {}).get("athlete_context"),
+    )
     methodology = load_methodology()
     catalog = load_catalog()
     lift_maxes = lift_maxes or {}

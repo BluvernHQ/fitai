@@ -1,0 +1,46 @@
+{
+  "id": "muscular_endurance",
+  "label": "Muscular Endurance",
+  "short_label": "Endurance",
+  "tests": [
+    {
+      "key": "push_ups",
+      "label": "Push-ups (1 min)",
+      "sides": false
+    },
+    {
+      "key": "squats",
+      "label": "Squats (1 min)",
+      "sides": false
+    },
+    {
+      "key": "calf_raises",
+      "label": "Calf raises (1 min)",
+      "sides": true
+    },
+    {
+      "key": "pull_ups",
+      "label": "Pull-ups (1 min)",
+      "sides": false,
+      "optional": true
+    }
+  ],
+  "low_thresholds": {
+    "push_ups": {
+      "male": 20,
+      "female": 10
+    },
+    "squats": {
+      "male": 30,
+      "female": 25
+    },
+    "calf_raises": {
+      "male": 20,
+      "female": 15
+    },
+    "pull_ups": {
+      "male": 5,
+      "female": 2
+    }
+  }
+}

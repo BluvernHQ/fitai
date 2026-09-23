@@ -1,0 +1,67 @@
+{
+  "id": "bunkie",
+  "label": "Bunkie Test",
+  "short_label": "Bunkie",
+  "lines": [
+    {
+      "key": "anterior_power",
+      "label": "Anterior Power Line",
+      "sling": "Superficial Front Line",
+      "norm_min": 30,
+      "norm_max": 45,
+      "compensations": [
+        "lumbar_extension",
+        "shoulder_collapse",
+        "hip_flexor_dominance"
+      ]
+    },
+    {
+      "key": "lateral_power",
+      "label": "Lateral Power Line",
+      "sling": "Lateral Sling",
+      "norm_min": 30,
+      "norm_max": 45,
+      "compensations": [
+        "pelvic_drop",
+        "trunk_rotation",
+        "knee_valgus_risk"
+      ]
+    },
+    {
+      "key": "posterior_power",
+      "label": "Posterior Power Line",
+      "sling": "Superficial Back Line",
+      "norm_min": 30,
+      "norm_max": 45,
+      "compensations": [
+        "pelvic_sag",
+        "hamstring_cramp",
+        "asymmetry"
+      ]
+    },
+    {
+      "key": "posterior_stabilizing",
+      "label": "Posterior Stabilizing Line",
+      "sling": "Deep Back / Stabilizing",
+      "norm_min": 30,
+      "norm_max": 45,
+      "compensations": [
+        "loss_of_alignment",
+        "shaking"
+      ]
+    },
+    {
+      "key": "medial_stabilizing",
+      "label": "Medial Stabilizing Line",
+      "sling": "Deep Front / Medial Sling",
+      "norm_min": 25,
+      "norm_max": 40,
+      "compensations": [
+        "hip_flexion",
+        "shaking",
+        "loss_of_alignment"
+      ]
+    }
+  ],
+  "asymmetry_threshold_seconds": 8
+}
